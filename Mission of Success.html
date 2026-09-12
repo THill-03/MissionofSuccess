@@ -1,0 +1,1960 @@
+<title>Mission of Success</title>
+<style>
+  :root{
+    --bg:#0b1020; --panel:#151c33; --panel2:#1d2745; --ink:#eef3ff; --dim:#8fa0c8;
+    --hot:#ff7a2f; --hot2:#ffc24a; --go:#39d98a; --bad:#ff5d6c; --line:#2c3860;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:16px/1.4 "Trebuchet MS","Segoe UI",system-ui,sans-serif;overflow:hidden}
+  #app{display:flex;height:100vh;width:100vw}
+
+  /* ---------- builder panel ---------- */
+  #builder{width:330px;flex:0 0 330px;background:var(--panel);border-right:4px solid var(--line);
+           display:flex;flex-direction:column;overflow:hidden}
+  #scroll{flex:1 1 auto;overflow-y:auto;min-height:0;position:relative}
+  #scroll::after{content:"";position:sticky;bottom:0;display:block;height:14px;
+                 background:linear-gradient(transparent,var(--panel));pointer-events:none}
+  #brand{padding:8px 16px 7px;border-bottom:3px solid var(--line)}
+  #brand h1{margin:0;font-size:20px;line-height:1.1;letter-spacing:1.2px;white-space:nowrap;
+            background:linear-gradient(90deg,var(--hot2),var(--hot));-webkit-background-clip:text;
+            background-clip:text;color:transparent}
+  #brand p{margin:1px 0 0;font-size:11px;color:var(--dim);letter-spacing:1px}
+  .sect{padding:6px 16px 8px;border-bottom:2px solid var(--line)}
+  .sect h2{margin:0 0 5px;font-size:11px;letter-spacing:1.5px;color:var(--hot2);text-transform:uppercase}
+  label{display:block;font-size:12px;color:var(--dim);margin:3px 0 1px}
+  select{width:100%;padding:4px 8px;border-radius:8px;border:2px solid var(--line);
+         background:var(--panel2);color:var(--ink);font:inherit;font-size:14px;cursor:pointer}
+  select:hover{border-color:var(--hot)}
+  input[type=range]{width:100%;accent-color:var(--hot);cursor:pointer;margin:2px 0}
+  .val{float:right;color:var(--ink);font-weight:bold}
+  .chk{display:flex;align-items:center;gap:8px;margin-top:7px;font-size:14px;color:var(--ink);cursor:pointer}
+  .chk input{width:18px;height:18px;accent-color:var(--hot);cursor:pointer}
+
+  /* ---------- stats ---------- */
+  #stats{font-size:13px}
+  .row{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px dotted #2b3560}
+  .good{color:var(--go)} .warn{color:var(--hot2)} .bad{color:var(--bad)}
+  #advice{margin-top:7px;padding:8px 10px;border-radius:9px;font-size:13px;line-height:1.3;
+          background:#20294a;border-left:4px solid var(--hot2)}
+
+  /* ---------- launch ---------- */
+  #pinned{flex:0 0 auto;background:var(--panel);border-top:3px solid var(--line);
+          box-shadow:0 -10px 22px #0b102088}
+  #nowSect{border-bottom:none;padding-bottom:4px}
+  #launchWrap{padding:4px 16px 12px;flex:0 0 auto}
+  #launch{width:100%;padding:13px;font:inherit;font-size:21px;font-weight:bold;letter-spacing:2px;
+          color:#2a1300;background:linear-gradient(180deg,var(--hot2),var(--hot));
+          border:none;border-radius:14px;cursor:pointer;box-shadow:0 5px 0 #a63f0a}
+  #launch:hover{filter:brightness(1.08)}
+  #launch:active{transform:translateY(4px);box-shadow:0 1px 0 #a63f0a}
+  #launch:disabled{filter:grayscale(.7);cursor:default;box-shadow:0 5px 0 #555}
+  #hint{text-align:center;font-size:11px;color:var(--dim);margin-top:7px}
+
+  /* ---------- flight view ---------- */
+  #view{flex:1;position:relative;min-width:0}
+  canvas{display:block;width:100%;height:100%}
+  #hud{position:absolute;top:14px;left:14px;font-size:14px;pointer-events:none;
+       text-shadow:0 2px 5px #000;line-height:1.55}
+  #hud .big{font-size:30px;font-weight:bold;letter-spacing:1px}
+  #hStat{font-size:13px;font-weight:bold;letter-spacing:2.5px;margin-top:4px;color:var(--dim)}
+  #bars{margin-top:6px}
+  .bar{display:flex;align-items:center;gap:6px;margin-top:3px;transition:opacity .3s}
+  .bl{font-size:9px;letter-spacing:1.5px;width:30px;color:#cfd8ee}
+  .bt{display:block;width:124px;height:9px;border:1px solid #fff7;border-radius:5px;overflow:hidden}
+  .bf{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--hot2),var(--hot))}
+  #best{position:absolute;top:14px;right:14px;text-align:right;font-size:13px;
+        color:var(--dim);text-shadow:0 2px 5px #000;pointer-events:none}
+  #best b{color:var(--hot2);font-size:19px}
+  #mute{position:absolute;bottom:14px;right:14px;background:#0008;border:2px solid var(--line);
+        color:var(--ink);border-radius:10px;padding:7px 11px;font:inherit;font-size:17px;cursor:pointer}
+
+  /* ---------- result card ---------- */
+  #result{position:absolute;inset:0;display:none;place-items:center;background:#040814cc;z-index:20}
+  #result.on{display:grid}
+  #card{background:var(--panel);border:4px solid var(--hot);border-radius:20px;
+        padding:26px 32px;text-align:center;min-width:330px;max-width:90vw;
+        box-shadow:0 18px 60px #000b}
+  #card h2{margin:0;font-size:17px;letter-spacing:2px;color:var(--dim)}
+  #score{font-size:56px;font-weight:bold;margin:2px 0 4px;
+         background:linear-gradient(90deg,var(--hot2),var(--hot));-webkit-background-clip:text;
+         background-clip:text;color:transparent}
+  #why{font-size:17px;margin:6px 0 4px}
+  #record{color:var(--hot2);font-weight:bold;font-size:19px;height:24px;letter-spacing:1px}
+  #cardBtns{display:flex;gap:11px;margin-top:18px}
+  #cardBtns button{flex:1;padding:13px;font:inherit;font-size:16px;font-weight:bold;
+                   border-radius:11px;cursor:pointer;background:var(--panel2);color:var(--ink);
+                   border:2px solid var(--line)}
+  #cardBtns button.go{background:linear-gradient(180deg,var(--hot2),var(--hot));color:#2a1300;border:none}
+  #cardBtns button:hover{filter:brightness(1.12)}
+
+  /* ---------- leaderboard ---------- */
+  #board{padding:10px 16px 18px;font-size:13px;text-align:left}
+  #board h3{margin:0 0 6px;font-size:11px;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase}
+  .bl{display:flex;justify-content:space-between;padding:2px 0;color:var(--dim)}
+  .bl.me{color:var(--hot2);font-weight:bold}
+  .bl span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
+  #clear{background:none;border:none;color:#54618c;font:inherit;font-size:11px;cursor:pointer;
+         text-decoration:underline;margin-top:7px;padding:0}
+
+  /* ---------- friendly error screen ---------- */
+  #oops{position:absolute;inset:0;display:none;place-items:center;background:var(--bg);z-index:99;padding:24px}
+  #oops.on{display:grid}
+  #oopsCard{max-width:620px;background:var(--panel);border:4px solid var(--bad);
+            border-radius:18px;padding:26px 30px}
+  #oopsCard h2{margin:0 0 10px;color:var(--bad);font-size:27px}
+  #oopsCard p{font-size:16px;line-height:1.55}
+  #oopsCard code{background:#0008;padding:2px 7px;border-radius:5px;color:var(--hot2);font-size:15px}
+  #oopsList{margin:12px 0 0;padding-left:20px}
+  #oopsList li{margin:7px 0}
+</style>
+
+<div id="app">
+  <aside id="builder">
+    <div id="brand">
+      <h1>MISSION OF SUCCESS</h1>
+      <p>FLY THE JUPI ROCKET</p>
+    </div>
+
+    <div id="scroll">
+
+    <div class="sect">
+      <h2>Stage 1 &mdash; Boosters</h2>
+      <label>Booster type</label>
+      <select id="selBoost"></select>
+      <label>Booster size <span class="val" id="vBoost">0.75</span></label>
+      <input type="range" id="rBoost" min="0.05" max="1.50" step="0.05" value="0.75">
+    </div>
+
+    <div class="sect">
+      <h2>Stage 2 &mdash; Core</h2>
+      <label>Main body</label>
+      <select id="selTank"></select>
+      <label>Core engine</label>
+      <select id="selEngine"></select>
+      <label>Core fuel <span class="val" id="vFuel">220 kg</span></label>
+      <input type="range" id="rFuel" min="0" max="1200" step="20" value="220">
+    </div>
+
+    <div class="sect">
+      <h2>Stage 3 &mdash; Service module</h2>
+      <label>Service module</label>
+      <select id="selCapEng"></select>
+      <label>Service fuel <span class="val" id="vCapFuel">90 kg</span></label>
+      <input type="range" id="rCapFuel" min="0" max="400" step="10" value="90">
+      <label>Jupi module <span class="val" style="color:var(--dim);font-weight:normal">comes home</span></label>
+      <select id="selCapsule"></select>
+    </div>
+
+    <div class="sect">
+      <h2>Flying</h2>
+      <label>Throttle <span class="val" id="vThr">100%</span></label>
+      <input type="range" id="rThr" min="50" max="100" step="5" value="100">
+      <label class="chk"><input type="checkbox" id="cChute" checked> Parachute</label>
+    </div>
+
+      <div id="board">
+        <h3>Hall of Fame</h3>
+        <div id="boardList"></div>
+        <button id="clear">clear the board</button>
+      </div>
+    </div><!-- /scroll -->
+
+    <div id="pinned">
+    <div class="sect" id="nowSect">
+      <h2>Jupi right now</h2>
+      <div id="stats"></div>
+      <div id="advice"></div>
+    </div>
+    <div id="launchWrap">
+      <button id="launch">LAUNCH</button>
+      <div id="hint">or press SPACE</div>
+    </div>
+    </div><!-- /pinned -->
+  </aside>
+
+  <div id="view">
+    <canvas id="cv"></canvas>
+    <div id="hud">
+      <div class="big"><span id="hAlt">0</span> m</div>
+      <div><span id="hSpd">0</span> m/s &nbsp;&middot;&nbsp; <span id="hTime">0.0</span>s</div>
+      <div id="hStat">ON THE PAD</div>
+      <div id="bars">
+        <div class="bar" id="barS"><span class="bl">SRB</span><span class="bt"><span class="bf" id="fS"></span></span></div>
+        <div class="bar" id="barC"><span class="bl">CORE</span><span class="bt"><span class="bf" id="fC"></span></span></div>
+        <div class="bar" id="barU"><span class="bl">SVC</span><span class="bt"><span class="bf" id="fU"></span></span></div>
+      </div>
+    </div>
+    <div id="best">BEST TODAY<br><b id="bestAlt">&mdash;</b></div>
+    <button id="mute">SOUND ON</button>
+  </div>
+</div>
+
+<div id="result">
+  <div id="card">
+    <h2>JUPI REACHED</h2>
+    <div id="score">0 m</div>
+    <div id="why"></div>
+    <div id="record"></div>
+    <div id="cardBtns">
+      <button id="again" class="go">LAUNCH AGAIN</button>
+      <button id="tweak">TWEAK JUPI</button>
+    </div>
+  </div>
+</div>
+
+<div id="oops"><div id="oopsCard">
+  <h2>Oops &mdash; Jupi needs a fix!</h2>
+  <p id="oopsMsg"></p>
+  <ul id="oopsList"></ul>
+  <p style="color:#8fa0c8;font-size:14px">
+    Open <code>Mission of Success.html</code> in Notepad, find the part near the top that says
+    <code>KIDS EDIT THIS</code>, fix it, and save. Then reload this page.</p>
+</div></div>
+<script>
+/* ==========================================================================
+
+     ██  ██  ██ ██████  ██
+     ██  ██  ██ ██   ██ ██
+     ██  ██  ██ ██████  ██
+     ██  ██  ██ ██      ██
+     ██████  ██ ██      ██        MISSION OF SUCCESS
+
+
+   ####################################################################
+   #                                                                  #
+   #                 KIDS EDIT THIS!  <-- you are here                #
+   #                                                                  #
+   #   Everything between here and the big STOP sign is yours.        #
+   #   Change a number, save the file, reload the page. That's it!     #
+   #                                                                  #
+   #   Rules for not breaking it:                                     #
+   #     * numbers have NO quotes:        thrust: 14000               #
+   #     * words DO have quotes:          name: "Big Bertha"          #
+   #     * every line ends with a comma:  mass: 55,                   #
+   #                                                                  #
+   #   If you break something, Jupi will tell you what's wrong        #
+   #   instead of showing a blank page. Nothing you type can hurt      #
+   #   your computer. Go wild.                                        #
+   #                                                                  #
+   ####################################################################
+
+   ========================================================================== */
+
+const JUPI = {
+
+  /* ------------------------------------------------------------------
+     THE WORLD that Jupi flies in.
+     ------------------------------------------------------------------ */
+  world: {
+    gravity:      9.81,   // how hard the planet pulls (9.81 = Earth).
+                          //   Try 1.62 for the Moon! Or 24.8 for Jupiter.
+    airThickness: 1.225,  // how thick the air is at the ground.
+                          //   Try 0 for NO AIR AT ALL (like the Moon).
+    wind:         3,      // sideways wind, in metres per second.
+                          //   Slow rockets get blown around WAY more than fast ones.
+                          //   Crank it up to 12 and watch Jupi lean into it!
+  },
+
+
+  /* ==================================================================
+     STAGE 1 - THE BOOSTERS
+     Two solid rockets strapped on at the sides. They light at the same
+     moment as the core, burn like mad for a few seconds, then LET GO
+     and tumble away.
+
+     Solid rockets cannot be throttled and cannot be switched off. Once
+     they are lit, they are lit. That is true of the real ones too.
+
+     Everything below is "per square metre of booster", so the booster
+     size slider scales all of it at once.
+     ================================================================== */
+  boosters: [
+    { name: "Standard Boosters",
+      heaviness:   22,    // kg of empty casing, per square metre
+      propellant: 150,    // kg of solid fuel packed in, per square metre
+      thrust:   11000,    // newtons of shove, per square metre
+      burnTime:     7,    // seconds until they are spent
+      color:   "#8f99b0" },   // bare metal
+
+    { name: "Long Burners",
+      heaviness:   26,
+      propellant: 150,
+      thrust:    7000,    // gentler shove...
+      burnTime:    13,    // ...but they push for nearly twice as long
+      color:   "#39d98a" },
+
+    { name: "Fire Crackers",
+      heaviness:   18,
+      propellant: 130,
+      thrust:   19000,    // ENORMOUS kick
+      burnTime:     4,    // and it is over in a blink
+      color:   "#ff5d6c" },
+
+    // ADD YOUR OWN!
+  ],
+
+
+  /* ==================================================================
+     STAGE 2 - THE CORE
+     The big body at the bottom with the twin nozzles. It lights on the
+     pad along with the boosters and keeps going after they drop away.
+     When its tank runs dry the whole core falls off too.
+     ================================================================== */
+
+  /* ---- the core body (this is where the core fuel goes) ----
+     "smoothness" is how easily the air slips past Jupi.
+     A fat blunt body shoves air out of the way (0.48).
+     A slim streamlined one slices through it (0.30) and flies higher. */
+  tanks: [
+    { name: "Standard Body",
+      dryMass:     35,    // weight of the empty body (kg)
+      maxFuel:   1200,    // the most fuel you can pour in (kg)
+      height:     2.0,    // how tall (metres)
+      diameter:   0.68,   // how wide (metres)
+      smoothness: 0.42,
+      color:   "#e3e7ee" },   // white airframe paint
+
+    { name: "Small Body",
+      dryMass:     18,
+      maxFuel:    400,
+      height:     1.3,
+      diameter:   0.58,
+      smoothness: 0.42,
+      color:   "#f72585" },
+
+    { name: "Slipstream Body",
+      dryMass:     40,
+      maxFuel:   1200,
+      height:     2.3,
+      diameter:   0.62,
+      smoothness: 0.30,   // slim and slippery - much less air drag
+      color:   "#b5179e" },
+
+    { name: "Jumbo Body",
+      dryMass:     70,
+      maxFuel:   2000,    // a LOT of fuel. Careful - fuel is heavy!
+      height:     3.0,
+      diameter:   0.82,
+      smoothness: 0.48,
+      color:   "#4361ee" },
+
+    // ADD YOUR OWN!
+  ],
+
+  /* ---- core engines ----
+     Here is the secret most people get wrong: an engine that sips fuel
+     slowly is more efficient than a big loud one. Divide thrust by
+     burnRate to see how thrifty an engine really is - bigger is better. */
+  engines: [
+    { name: "Starter Engine",
+      thrust:  14000,     // how hard it pushes (newtons)
+      burnRate:   22,     // how much fuel it eats each second (kg)
+      mass:       55,     // how heavy the engine is (kg)
+      color:   "#ff7a2f" },
+
+    { name: "Slow Burner",
+      thrust:   9000,     // weaker...
+      burnRate:   10,     // ...but SO much thriftier. Burns for ages.
+      mass:       50,
+      color:   "#39d98a" },
+
+    { name: "Big Bertha",
+      thrust:  26000,     // loads of push
+      burnRate:   48,     // and a big thirst to match
+      mass:       95,
+      color:   "#ff5d6c" },
+
+    { name: "Mega Booster 9000",
+      thrust:  45000,     // ENORMOUS
+      burnRate:   95,     // gone in seconds. Is it worth it? Find out!
+      mass:      150,
+      color:   "#c77dff" },
+
+    // ADD YOUR OWN! What happens with thrust: 200000 ?
+  ],
+
+
+  /* ==================================================================
+     STAGE 3 - THE SERVICE MODULE
+     Once the core drops away this lights its own little engine and pushes
+     on alone. When ITS tank runs dry it has nothing left to give, so it is
+     dropped too - and the Jupi module carries on by itself.
+     ================================================================== */
+  capsuleEngines: [
+    { name: "Kick Motor",
+      thrust:   4200,
+      burnRate:  4.5,
+      mass:       28,    // the engine itself (kg)
+      hull:       30,    // the module around it that holds the fuel (kg)
+      height:   0.75,    // how tall the service module is (metres)
+      color:   "#4cc9f0" },
+
+    { name: "Whisper",
+      thrust:   2200,    // barely a nudge...
+      burnRate:  1.8,    // ...but the thriftiest engine in the whole game
+      mass:       22,
+      hull:       26,
+      height:    0.7,
+      color:   "#39d98a" },
+
+    { name: "Punch",
+      thrust:   8000,    // strong for an upper stage
+      burnRate:   11,    // and it drinks
+      mass:       40,
+      hull:       36,
+      height:   0.85,
+      color:   "#ff7a2f" },
+
+    // ADD YOUR OWN!
+  ],
+
+
+  /* ==================================================================
+     THE JUPI MODULE
+     The nose cone with the window in it. No engine, no fuel - it just
+     rides all the way up and parachutes home. It is the ONLY piece that
+     survives the whole trip, so every kilogram here is carried by every
+     single stage below it. Lighter really does mean higher.
+     ================================================================== */
+  capsules: [
+    { name: "Standard Jupi",
+      mass:      62,      // how heavy the Jupi module is (kg)
+      height:   0.95,     // how tall it is (metres)
+      diameter:  0.55,    // how wide it is (metres)
+      color:   "#b9c2d2" },   // bare metal
+
+    { name: "Light Jupi",
+      mass:      38,      // lighter = Jupi flies higher
+      height:    0.8,
+      diameter:  0.48,
+      color:   "#ffd166" },
+
+    { name: "Jupi Lab",
+      mass:     118,      // a big science lab. Can your rocket carry it?
+      height:   1.15,
+      diameter:  0.66,
+      color:   "#9aa7c7" },
+
+    // ADD YOUR OWN!
+  ],
+
+
+  /* ------------------------------------------------------------------
+     THE ROCKET JUPI STARTS WITH when you open the game.
+     Use the exact names from the lists above.
+     ------------------------------------------------------------------ */
+  startingRocket: {
+    // stage 1
+    boosters:    "Standard Boosters",
+    boosterSize: 0.75,  // how big the side boosters are (square metres)
+    // stage 2
+    tank:        "Standard Body",
+    engine:      "Starter Engine",
+    fuel:         220,  // kg of fuel in the core
+    // stage 3
+    capsuleEngine: "Kick Motor",
+    capsuleFuel:    90, // kg of fuel in the service module
+    // the bit that comes home
+    capsule:       "Standard Jupi",
+    // flying
+    throttle:    100,   // percent (solid boosters ignore this - they always go full blast)
+    parachute:  true,   // true = float down safely. false = SPECTACULAR CRASH.
+    showFace:  false,   // true = Jupi gets cartoon eyes in the window again!
+  },
+};
+
+
+/* ==========================================================================
+
+     ####################################################################
+     #                                                                  #
+     #    STOP! Below here is the ENGINE ROOM.                          #
+     #                                                                  #
+     #    You don't need to change ANY of this to play.                 #
+     #    But you're very welcome to peek - this is the real physics    #
+     #    that makes Jupi fly, and it's the same maths NASA uses.        #
+     #                                                                  #
+     ####################################################################
+
+   ========================================================================== */
+/* --------------------------------------------------------------------------
+   PHYSICS CONSTANTS
+   These were tuned by flying thousands of test rockets. Change them and
+   Jupi will still fly, but the balance of the game will shift.
+   -------------------------------------------------------------------------- */
+const DT        = 1 / 120;  // the simulation ticks 120 times a second, always,
+                            // so Jupi flies identically on every computer
+const R_EARTH   = 6371000;  // planet radius (m) - gravity gets weaker as you climb
+const SCALE_H   = 8500;     // air gets thinner as you climb; this is how fast
+const RAIL      = 8;        // height of the launch rail (m)
+const CN_NOSE   = 1.8;      // how much the nose end gets pushed sideways by air
+const CN_FIN    = 4.2;      // how much grip the boosters have. This is what saves you.
+const CD_FIN    = 0.15;     // extra air drag per square metre of booster
+const FIN_POS   = 0.35;     // how far up the boosters push, measured from the nozzles
+const DAMP      = 0.9;      // how fast wobbles settle down
+const CHUTE_CDA = 50;       // how much the parachute grabs the air
+const TUMBLE_AOA = 1.22;    // sideways by more than 70 degrees = tumbling
+const TUMBLE_SPIN = 3.0;    // or spinning faster than this
+const SAFE_LANDING = 12;    // land slower than this (m/s) and Jupi is fine
+const WOBBLY    = 0.05;     // below this steadiness Jupi gets twitchy
+const TUMBLES   = -0.51;    // below this it cannot save itself (measured, not guessed)
+
+// Once the boosters drop away there is nothing left to keep Jupi straight, so
+// the autopilot takes over and steers - exactly like a real rocket gimballing
+// its engine. Without this, every flight would tumble the moment it staged.
+const GUIDE_K   = 2.6;      // how hard the autopilot pushes back
+const GUIDE_D   = 3.2;      // how hard it damps the spin
+const GUIDE_MAX = 1.3;      // the most it can manage (rad per second per second)
+
+/* --------------------------------------------------------------------------
+   CHECKING THE PARTS LIST
+   If a kid mistypes a number we say so in plain English instead of
+   showing a blank white page.
+   -------------------------------------------------------------------------- */
+function checkParts() {
+  const problems = [];
+  const num = (v) => typeof v === "number" && isFinite(v);
+
+  const need = (obj, where, fields) => {
+    if (!obj || typeof obj !== "object") { problems.push(where + " is missing or isn't set up right."); return; }
+    const label = (typeof obj.name === "string" && obj.name) ? '"' + obj.name + '"' : where;
+    if (typeof obj.name !== "string" || !obj.name)
+      problems.push(where + " needs a name, in quotes - like  name: \"Speedy\",");
+    for (const f of fields) {
+      if (!(f in obj))      problems.push(label + " is missing " + f + ".");
+      else if (!num(obj[f])) problems.push(label + ": " + f + " should be a plain number with no quotes - " +
+                                           "right now it is " + JSON.stringify(obj[f]) + ".");
+      else if (obj[f] <= 0)  problems.push(label + ": " + f + " has to be bigger than zero.");
+    }
+  };
+
+  if (typeof JUPI !== "object" || !JUPI) return ["The whole parts list is missing!"];
+
+  const w = JUPI.world;
+  if (!w || typeof w !== "object") problems.push("The world settings are missing.");
+  else {
+    if (!num(w.gravity) || w.gravity <= 0) problems.push("world: gravity must be a number bigger than zero (Earth is 9.81).");
+    if (!num(w.airThickness) || w.airThickness < 0) problems.push("world: airThickness must be a number, 0 or more (Earth is 1.225).");
+    if (!num(w.wind)) problems.push("world: wind must be a plain number (try 3).");
+  }
+
+  const lists = [
+    ["capsules",       ["mass", "height", "diameter"]],
+    ["capsuleEngines", ["thrust", "burnRate", "mass", "hull", "height"]],
+    ["engines",        ["thrust", "burnRate", "mass"]],
+    ["tanks",          ["dryMass", "maxFuel", "height", "diameter", "smoothness"]],
+    ["boosters",       ["heaviness", "propellant", "thrust", "burnTime"]],
+  ];
+  for (const [key, fields] of lists) {
+    const arr = JUPI[key];
+    if (!Array.isArray(arr) || arr.length === 0) { problems.push("The " + key + " list is empty or missing - you need at least one!"); continue; }
+    arr.forEach((p, i) => need(p, key + " #" + (i + 1), fields));
+  }
+
+  const s = JUPI.startingRocket;
+  if (!s || typeof s !== "object") problems.push("startingRocket is missing.");
+  else {
+    const find = (list, nm) => Array.isArray(JUPI[list]) ? JUPI[list].find(p => p && p.name === nm) : null;
+    const pairs = [["capsule", "capsules", "Jupi module"],
+                   ["capsuleEngine", "capsuleEngines", "service module"],
+                   ["engine", "engines", "core engine"],
+                   ["tank", "tanks", "main body"],
+                   ["boosters", "boosters", "set of boosters"]];
+    for (const [field, list, word] of pairs)
+      if (!find(list, s[field]))
+        problems.push('startingRocket: there is no ' + word + ' called "' + s[field] + '". Check the spelling!');
+    if (!num(s.fuel) || s.fuel < 0)        problems.push("startingRocket: fuel must be a number, 0 or more.");
+    if (!num(s.capsuleFuel) || s.capsuleFuel < 0) problems.push("startingRocket: capsuleFuel must be a number, 0 or more.");
+    if (!num(s.boosterSize) || s.boosterSize <= 0) problems.push("startingRocket: boosterSize must be a number bigger than zero.");
+  }
+  return problems;
+}
+
+/* --------------------------------------------------------------------------
+   BUILDING A ROCKET
+
+   Jupi is four pieces stacked up, and it drops three of them on the way:
+     STAGE 1  the two solid boosters on the sides. Huge shove, short burn,
+              then they let go and fall away.
+     STAGE 2  the core - the big body with the twin nozzles.
+     STAGE 3  the service module, which lights its own engine once the
+              core has gone. When ITS tank runs dry it is dropped too.
+     THE JUPI MODULE rides all the way up and comes home on the parachute.
+              It is the only piece that survives the whole trip.
+
+   Throwing away empty stages is the whole trick: why carry an empty tank?
+   -------------------------------------------------------------------------- */
+function byName(list, nm) { return list.find(p => p.name === nm) || list[0]; }
+
+function buildRocket(sel) {
+  const capsule = byName(JUPI.capsules,       sel.capsule);        // the Jupi module
+  const capEng  = byName(JUPI.capsuleEngines, sel.capsuleEngine);  // the service module
+  const engine  = byName(JUPI.engines,        sel.engine);
+  const tank    = byName(JUPI.tanks,          sel.tank);
+  const booster = byName(JUPI.boosters,       sel.boosters);
+
+  const area     = sel.boosterSize;
+  const throttle = sel.throttle / 100;
+
+  // total height, and how wide the widest bit is
+  const L    = tank.height + capEng.height + capsule.height;
+  const wide = Math.max(capsule.diameter, tank.diameter);
+  const A    = Math.PI * (wide / 2) ** 2;
+
+  // Where each piece sits, measured UP from the nozzles at the bottom.
+  const pos = {
+    srb:  FIN_POS,
+    core: tank.height / 2,
+    svc:  tank.height + capEng.height / 2,
+    pod:  tank.height + capEng.height + capsule.height / 2,
+  };
+
+  // STAGE 1 - solid boosters. Everything scales with how big you make them.
+  // Solids cannot be throttled and cannot be shut down - that is real.
+  const srb = {
+    dry:    area * booster.heaviness,
+    prop:   area * booster.propellant,
+    thrust: area * booster.thrust,
+    rate:   area * booster.propellant / booster.burnTime,
+  };
+  // STAGE 2 - the core
+  const core = { dry: tank.dryMass + engine.mass, prop: Math.min(sel.fuel, tank.maxFuel),
+                 thrust: engine.thrust * throttle, rate: engine.burnRate * throttle };
+  // STAGE 3 - the service module (engine + the hull that holds it and the fuel)
+  const svc  = { dry: capEng.mass + capEng.hull, prop: sel.capsuleFuel,
+                 thrust: capEng.thrust * throttle, rate: capEng.burnRate * throttle };
+  // THE JUPI MODULE - no engine, no fuel, just the bit that comes home
+  const pod  = { dry: capsule.mass };
+
+  // how the boosters are drawn, derived from their area so the picture
+  // always matches the numbers
+  const bw = 0.10 + 0.22 * Math.sqrt(area);
+  const boosterH = tank.height * (0.50 + 0.42 * Math.min(area, 1.4) / 1.4);
+
+  return {
+    capsule, capEng, engine, tank, booster, boosterArea: area, throttle,
+    chute: !!sel.parachute, L, wide, A, pos, srb, core, svc, pod,
+    bw, boosterH, span: wide / 2 + 2 * bw + wide * 0.06,
+    cnNose: CN_NOSE * A, noseC: L - 0.4,
+    CdA_full: tank.smoothness * A + CD_FIN * area,   // everything attached
+    CdA_core: tank.smoothness * A,                   // boosters gone
+    CdA_svc:  tank.smoothness * Math.PI * (capsule.diameter / 2) ** 2,   // core gone
+    CdA_pod:  tank.smoothness * Math.PI * (capsule.diameter / 2) ** 2 * 0.8, // module alone
+    maxFuel: tank.maxFuel,
+  };
+}
+
+/* How heavy Jupi is right now, where it balances, and where the air pushes.
+   All three change the instant a stage falls away. */
+function massBalance(r, f) {
+  let m = 0, mom = 0;
+  if (f.srbOn)  { const s = r.srb.dry  + f.srbProp;  m += s; mom += s * r.pos.srb; }
+  if (f.coreOn) { const c = r.core.dry + f.coreProp; m += c; mom += c * r.pos.core; }
+  if (f.svcOn)  { const v = r.svc.dry  + f.svcProp;  m += v; mom += v * r.pos.svc; }
+  m += r.pod.dry; mom += r.pod.dry * r.pos.pod;
+
+  const cnFin = f.srbOn ? CN_FIN * r.boosterArea : 0;
+  return { m, com: mom / m,
+           cop: (r.cnNose * r.noseC + cnFin * r.pos.srb) / (r.cnNose + cnFin),
+           cnTot: r.cnNose + cnFin };
+}
+
+function stability(r, f) { const mb = massBalance(r, f); return mb.com - mb.cop; }
+function atLiftoff(r) {
+  return { srbOn: true, coreOn: true, svcOn: true,
+           srbProp: r.srb.prop, coreProp: r.core.prop, svcProp: r.svc.prop };
+}
+
+/* --------------------------------------------------------------------------
+   THE FLIGHT
+   -------------------------------------------------------------------------- */
+function newFlight(r) {
+  return {
+    r, x: 0, y: 0, vx: 0, vy: 0, th: 0, om: 0, t: 0,
+    srbOn: true, coreOn: true, svcOn: true, svcLit: false, svcSepIn: -1,
+    srbProp: r.srb.prop, coreProp: r.core.prop, svcProp: r.svc.prop,
+    apogee: 0, maxV: 0, maxAoA: 0,
+    onRail: true, lifted: false, chuteOut: false, tumbled: false,
+    alive: true, outcome: null, landSpeed: 0, padTime: 0,
+    shake: 0, aoa: 0, throttleNow: 0, srbFire: 0, coreFire: 0, svcFire: 0,
+    events: [], jetsam: [],
+  };
+}
+
+function say(f, text) { f.events.push({ text, t: f.t }); }
+
+// a piece that has been thrown away, tumbling off on its own
+function jettison(f, kind) {
+  const spread = kind === "srb" ? 3.2 : 1.4;
+  f.jetsam.push({ kind, x: f.x, y: f.y, th: f.th,
+                  vx: f.vx - Math.cos(f.th) * spread, vy: f.vy - 1.5,
+                  om: (Math.random() - 0.5) * 2.4, life: 6, max: 6 });
+  if (kind === "srb")
+    f.jetsam.push({ kind, x: f.x, y: f.y, th: f.th, side: 1,
+                    vx: f.vx + Math.cos(f.th) * spread, vy: f.vy - 1.5,
+                    om: (Math.random() - 0.5) * 2.4, life: 6, max: 6 });
+}
+
+function stepJetsam(f, dt) {
+  const W = JUPI.world;
+  for (const j of f.jetsam) {
+    const g = W.gravity * (R_EARTH / (R_EARTH + Math.max(j.y, 0))) ** 2;
+    j.vy -= g * dt;
+    j.x += j.vx * dt; j.y += j.vy * dt; j.th += j.om * dt;
+    j.life -= dt;
+  }
+  f.jetsam = f.jetsam.filter(j => j.life > 0 && j.y > -20);
+}
+
+function stepFlight(f) {
+  if (!f.alive) return;
+  const r = f.r, W = JUPI.world;
+  const mb = massBalance(r, f);
+  const m = mb.m, c = mb.com;
+
+  // --- who is burning? Solids cannot be throttled or switched off. ---
+  let T = 0;
+  f.srbFire = f.coreFire = f.svcFire = 0;
+  if (f.srbOn && f.srbProp > 0) {
+    T += r.srb.thrust; f.srbFire = 1;
+    f.srbProp = Math.max(0, f.srbProp - r.srb.rate * DT);
+  }
+  if (f.coreOn && f.coreProp > 0 && r.core.rate > 0) {
+    T += r.core.thrust; f.coreFire = r.throttle;
+    f.coreProp = Math.max(0, f.coreProp - r.core.rate * DT);
+  }
+  if (f.svcOn && f.svcLit && f.svcProp > 0 && r.svc.rate > 0) {
+    T += r.svc.thrust; f.svcFire = r.throttle;
+    f.svcProp = Math.max(0, f.svcProp - r.svc.rate * DT);
+  }
+  f.throttleNow = Math.max(f.srbFire, f.coreFire, f.svcFire);
+
+  const g   = W.gravity * (R_EARTH / (R_EARTH + f.y)) ** 2;
+  const rho = W.airThickness * Math.exp(-f.y / SCALE_H);
+  const ax  = Math.sin(f.th), ay = Math.cos(f.th);
+
+  // --- still on the pad? Jupi only leaves when the engines out-push gravity ---
+  if (!f.lifted) {
+    if (T > m * g) { f.lifted = true; say(f, "LIFT OFF!"); }
+    else {
+      f.t += DT; f.padTime += DT;
+      f.shake = T > 0 ? 0.6 : 0;
+      if (T <= 0) { f.alive = false; f.outcome = "tooheavy"; }
+      return;
+    }
+  }
+
+  let fx = T * ax, fy = T * ay - m * g;
+
+  // --- air. What matters is how Jupi moves THROUGH it, so wind counts. ---
+  const CdA = (f.srbOn ? r.CdA_full : f.coreOn ? r.CdA_core : f.svcOn ? r.CdA_svc : r.CdA_pod)
+            + (f.chuteOut ? CHUTE_CDA : 0);
+  const wind = (f.y > 2) ? W.wind : 0;
+  const rvx = f.vx - wind, rvy = f.vy, rv = Math.hypot(rvx, rvy);
+  if (rv > 0.01 && rho > 0) {
+    const D = 0.5 * rho * rv * rv * CdA;
+    fx -= D * rvx / rv; fy -= D * rvy / rv;
+  }
+
+  // --- leaving the launch rail ---
+  // Jupi always gets the SAME small kick as it clears the rail, so the same
+  // rocket always flies exactly the same way. That makes every change a fair test.
+  if (f.onRail && f.y >= RAIL) { f.onRail = false; f.th += 0.02; f.om += 0.08; }
+
+  // --- which way is Jupi pointing? ---
+  const guided = !f.srbOn && !f.tumbled;
+  if (!f.onRail && rv > 0.5 && !f.chuteOut) {
+    const dot = ax * rvx / rv + ay * rvy / rv;
+    const cr  = ax * rvy / rv - ay * rvx / rv;
+    const a   = Math.atan2(cr, dot);            // angle of attack: how sideways Jupi is
+    f.aoa = a;
+    const I = m * r.L * r.L / 12;
+    if (guided) {
+      // the autopilot swings the nose back onto the flight path
+      let acc = -(GUIDE_K * a) - GUIDE_D * f.om;
+      f.om += Math.max(-GUIDE_MAX, Math.min(GUIDE_MAX, acc)) * DT;
+    } else {
+      if (f.vy > 0 && T > 0 && Math.abs(a) > f.maxAoA) f.maxAoA = Math.abs(a);
+      const q = 0.5 * rho * rv * rv;
+      const restore = -q * mb.cnTot * (c - mb.cop) * Math.sin(a);
+      const damping = -DAMP * rho * rv * mb.cnTot * r.L * r.L * f.om;
+      f.om += ((restore + damping) / I) * DT;
+      if (f.vy > 0 && T > 0 && (f.maxAoA > TUMBLE_AOA || Math.abs(f.om) > TUMBLE_SPIN)) f.tumbled = true;
+    }
+    f.th += f.om * DT;
+  }
+
+  f.vx += fx / m * DT;  f.vy += fy / m * DT;
+  f.x  += f.vx * DT;    f.y  += f.vy * DT;
+  f.t  += DT;
+
+  if (f.y > f.apogee) f.apogee = f.y;
+  const sp = Math.hypot(f.vx, f.vy);
+  if (sp > f.maxV) f.maxV = sp;
+  f.shake = T > 0 ? 0.3 + 0.35 * (f.srbFire ? 1 : 0.5) : Math.max(0, f.shake - DT * 2);
+
+  // --- STAGING ---
+  if (f.srbOn && f.srbProp <= 0) {
+    f.srbOn = false; jettison(f, "srb"); say(f, "BOOSTERS AWAY!");
+  }
+  if (f.coreOn && f.coreProp <= 0 && !f.srbOn) {
+    f.coreOn = false; jettison(f, "core");
+    if (f.svcProp > 0 && r.svc.rate > 0) { f.svcLit = true; say(f, "CORE SEP - SERVICE MODULE LIT!"); }
+    else { say(f, "CORE SEPARATION"); f.svcSepIn = 1.4; }
+  }
+  // once the service module is dry it has nothing left to give, so Jupi
+  // drops it too and comes home on its own
+  if (f.svcOn && !f.coreOn && f.svcSepIn < 0 && f.svcProp <= 0) f.svcSepIn = 1.4;
+  if (f.svcSepIn >= 0 && f.svcOn) {
+    f.svcSepIn -= DT;
+    if (f.svcSepIn <= 0) {
+      f.svcOn = false; jettison(f, "svc"); say(f, "JUPI MODULE SEPARATION!");
+    }
+  }
+
+  // parachute pops once everything has finished burning and Jupi is coming down
+  const stillBurning = f.srbFire > 0 || f.coreFire > 0 || f.svcFire > 0;
+  if (r.chute && !f.chuteOut && !stillBurning && f.vy < 0 && f.y > 5 && !f.tumbled) {
+    f.chuteOut = true; say(f, "PARACHUTE!");
+  }
+  if (f.chuteOut) { f.th *= 0.985; f.om = 0; }   // hanging from the chute, Jupi swings upright
+
+  if (f.y <= 0 && f.t > 0.5) {
+    f.y = 0;
+    f.alive = false;
+    f.landSpeed = sp;
+    f.outcome = f.tumbled ? "tumbled" : (sp < SAFE_LANDING ? "landed" : "crashed");
+  }
+}
+
+/* --------------------------------------------------------------------------
+   DRAWING JUPI
+   Everything here is drawn with code - there are no picture files, which is
+   why this whole game is one file you can email to a friend.
+   -------------------------------------------------------------------------- */
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+let VW = 0, VH = 0;
+
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const box = cv.parentElement.getBoundingClientRect();
+  VW = box.width; VH = box.height;
+  cv.width = Math.round(VW * dpr);
+  cv.height = Math.round(VH * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener("resize", resize);
+
+// --- scenery, worked out once ---
+const STARS = [];
+for (let i = 0; i < 160; i++)
+  STARS.push({ x: Math.random(), y: Math.random(), r: Math.random() * 1.3 + 0.3, tw: Math.random() * 6.28 });
+
+const CLOUDS = [];
+for (const alt of [260, 470, 700, 1050, 1500, 2100, 2900, 3900]) {
+  for (let i = 0; i < 3; i++)
+    CLOUDS.push({ alt: alt + (Math.random() - 0.5) * 90,
+                  x: (Math.random() - 0.5) * 900,
+                  w: 26 + Math.random() * 34, h: 7 + Math.random() * 6,
+                  a: 0.5 + Math.random() * 0.4 });
+}
+
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+function mixHex(c1, c2, t) {
+  const p = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  const a = p(c1), b = p(c2);
+  return "rgb(" + Math.round(lerp(a[0], b[0], t)) + "," + Math.round(lerp(a[1], b[1], t)) +
+         "," + Math.round(lerp(a[2], b[2], t)) + ")";
+}
+
+const SHOW_FACE = !!(typeof JUPI === "object" && JUPI && JUPI.startingRocket && JUPI.startingRocket.showFace);
+
+function zoomFor(alt, lenNow) {
+  const keepVisible = 34 / (lenNow || 3.7);     // never let Jupi shrink below ~34px
+  return clamp(58 / (1 + alt / 260), Math.max(12, keepVisible), 58);
+}
+// how tall Jupi is right now, given what it has already thrown away
+function lengthNow(r, f) {
+  if (!f || f.coreOn) return r.L;
+  if (f.svcOn) return r.capEng.height + r.capsule.height;
+  return r.capsule.height;
+}
+
+/* ---- particles: exhaust smoke and explosion bits ---- */
+let bits = [];
+function puff(x, y, vx, vy, life, size, color, opt) {
+  if (bits.length > 420) return;
+  const o = opt || {};
+  bits.push({ x, y, vx, vy, life, max: life, size, color,
+              weight: o.weight == null ? 3 : o.weight,
+              spread: o.spread == null ? 0.8 : o.spread,
+              punch:  o.punch  == null ? 1.4 : o.punch,
+              drag:   o.drag   == null ? 0.985 : o.drag });
+}
+function stepBits(dt) {
+  for (const b of bits) {
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    b.vy -= b.weight * dt; b.vx *= b.drag; b.vy *= b.drag;
+    if (b.y < 0) { b.y = 0; b.vy = 0; b.vx *= 0.7; }
+    b.life -= dt;
+  }
+  bits = bits.filter(b => b.life > 0);
+}
+
+/* ---- metal shading helpers ----
+   A real rocket body is a cylinder, so the light wraps around it: dark at the
+   far edge, a bright specular streak where it faces the sun, dark again at the
+   near edge. That one gradient is most of what makes metal look like metal. */
+function shade(hex, f) {
+  if (typeof hex !== "string" || hex.charAt(0) !== "#" || hex.length < 7) return "#888";
+  const v = i => {
+    const n = Math.round(parseInt(hex.slice(i, i + 2), 16) * f);
+    return n < 0 ? 0 : n > 255 ? 255 : n;
+  };
+  return "rgb(" + v(1) + "," + v(3) + "," + v(5) + ")";
+}
+function metalGrad(color, w, x0, mul) {
+  const m = mul || 1;                          // overall brightness, for shaded parts
+  const g = ctx.createLinearGradient(-w + (x0 || 0), 0, w + (x0 || 0), 0);
+  g.addColorStop(0.00, shade(color, 0.40 * m));
+  g.addColorStop(0.12, shade(color, 0.68 * m));
+  g.addColorStop(0.30, shade(color, 1.10 * m));
+  g.addColorStop(0.40, shade(color, 1.32 * m));   // sun streak
+  g.addColorStop(0.52, shade(color, 1.02 * m));
+  g.addColorStop(0.78, shade(color, 0.64 * m));
+  g.addColorStop(1.00, shade(color, 0.36 * m));
+  return g;
+}
+
+/* ---- what Jupi is doing right now (the HUD reads this out) ---- */
+function statusOf(f) {
+  if (!f) return "pad";
+  if (f.outcome === "landed")   return "landed";
+  if (f.outcome === "crashed")  return "crashed";
+  if (f.outcome === "tooheavy") return "stuck";
+  if (f.tumbled)                return "tumble";
+  if (f.chuteOut)               return "chute";
+  if (!f.lifted)                return f.padTime > 0.2 ? "stuck" : "pad";
+  if (f.srbFire > 0)            return "srb";
+  if (f.coreFire > 0)           return "core";
+  if (f.svcFire > 0)            return "svc";
+  if (!f.svcOn && f.vy > 0)     return "pod";
+  if (f.vy > 0)                 return "coast";
+  return "falling";
+}
+
+/* ---- the viewport: a real window, not a cartoon face ---- */
+function drawViewport(cx, cy, wr, tilt) {
+  // recessed shadow so the glass sits INSIDE the hull
+  ctx.fillStyle = "rgba(0,0,0,0.3)";
+  ctx.beginPath(); ctx.arc(cx, cy + wr * 0.05, wr * 1.13, 0, 6.2832); ctx.fill();
+
+  // machined metal rim
+  ctx.fillStyle = metalGrad("#b9c0d4", wr * 1.1, cx);
+  ctx.beginPath(); ctx.arc(cx, cy, wr * 1.1, 0, 6.2832); ctx.fill();
+
+  // the glass: dark, because you are looking into a shadowed cabin
+  const gl = ctx.createRadialGradient(cx - wr * 0.3, cy - wr * 0.35, wr * 0.05, cx, cy, wr);
+  gl.addColorStop(0, "#5b7897");
+  gl.addColorStop(0.5, "#33475e");
+  gl.addColorStop(1, "#1b2736");
+  ctx.fillStyle = gl;
+  ctx.beginPath(); ctx.arc(cx, cy, wr, 0, 6.2832); ctx.fill();
+
+  // sky reflected in the curve of the glass
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, wr, 0, 6.2832); ctx.clip();
+  const sky = ctx.createLinearGradient(0, cy - wr, 0, cy + wr);
+  sky.addColorStop(0, "rgba(205,233,255,0.8)");
+  sky.addColorStop(0.45, "rgba(160,200,238,0.3)");
+  sky.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = sky;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - wr * 0.42 - tilt * wr * 0.25, wr * 1.2, wr * 0.62, 0, 0, 6.2832);
+  ctx.fill();
+  // hard specular glint
+  ctx.fillStyle = "rgba(255,255,255,0.75)";
+  ctx.beginPath();
+  ctx.ellipse(cx - wr * 0.4, cy - wr * 0.45, wr * 0.3, wr * 0.15, -0.6, 0, 6.2832);
+  ctx.fill();
+  ctx.restore();
+
+  // rim highlight + bolts
+  ctx.strokeStyle = "rgba(255,255,255,0.4)";
+  ctx.lineWidth = wr * 0.06;
+  ctx.beginPath(); ctx.arc(cx, cy, wr * 1.05, Math.PI * 1.05, Math.PI * 1.75); ctx.stroke();
+  ctx.fillStyle = "rgba(30,36,52,0.75)";
+  for (let i = 0; i < 8; i++) {
+    const a = i * 0.7854 + 0.39;
+    ctx.beginPath();
+    ctx.arc(cx + Math.cos(a) * wr * 1.1, cy + Math.sin(a) * wr * 1.1, wr * 0.075, 0, 6.2832);
+    ctx.fill();
+  }
+}
+
+/* ---- the face is retired, but the kids can switch it back on ---- */
+function drawFace(mode, w, t) {
+  const eyeX = w * 0.26, R = w * 0.19;
+  ctx.lineCap = "round";
+  for (const s of [-1, 1]) {
+    const ex = s * eyeX;
+    let rx = R, ry = R;
+    if (mode === "thrust" || mode === "falling") { rx = R * 1.18; ry = R * 1.25; }
+    if (mode === "stuck") ry = R * 0.78;
+    ctx.fillStyle = "#fff";
+    ctx.beginPath(); ctx.ellipse(ex, 0, rx, ry, 0, 0, 6.2832); ctx.fill();
+    let px = 0, py = 0, pr = R * 0.46;
+    if (mode === "coast")  py = -ry * 0.42;
+    if (mode === "falling") { pr = R * 0.3; py = ry * 0.15; }
+    if (mode === "tumble") { px = Math.cos(t * 9 + s) * rx * 0.4; py = Math.sin(t * 9 + s) * ry * 0.4; }
+    ctx.fillStyle = "#20263a";
+    ctx.beginPath(); ctx.arc(ex + px, py, pr, 0, 6.2832); ctx.fill();
+  }
+  ctx.strokeStyle = "#20263a"; ctx.lineWidth = w * 0.065;
+  ctx.beginPath();
+  const my = R * 1.5, mw = w * 0.2;
+  if (mode === "landed" || mode === "thrust" || mode === "chute") ctx.arc(0, my - mw * 0.5, mw, 0.25, Math.PI - 0.25);
+  else if (mode === "falling" || mode === "stuck") ctx.ellipse(0, my, mw * 0.55, mw * 0.75, 0, 0, 6.2832);
+  else { ctx.moveTo(-mw * 0.6, my); ctx.lineTo(mw * 0.6, my); }
+  ctx.stroke();
+}
+
+/* ---- the exhaust plume ----
+   Two things real rocket exhaust does that cartoons never show:
+   1. SHOCK DIAMONDS - bright pulsing knots in the core, from the jet being
+      squeezed and released by the surrounding air. Only down in thick air.
+   2. The plume BLOOMS enormously as you climb, because there's less and less
+      air pressure holding it in. Up high it's a huge soft cone. */
+function drawPlume(r, f, thr, alt, scale, tint) {
+  const sc = scale || 1;
+  const hot = tint || "#ff8a2c";
+  const rhoRel = JUPI.world.airThickness > 0 ? Math.exp(-alt / SCALE_H) : 0;
+  const bloom = 1 + (1 - rhoRel) * 1.25;       // 1x down low, ~2.2x once the air thins
+  const flick = 0.92 + Math.random() * 0.16;
+  const nr = r.tank.diameter * 0.5 * sc;
+  const W = nr * 1.6 * bloom * flick;          // half-width at the nozzle exit
+  const L = nr * (4.4 + 4.2 * thr) * bloom * flick;
+
+  // tight heat glow right at the throat, not a wash over the whole screen
+  const gl = ctx.createRadialGradient(0, L * 0.22, 0, 0, L * 0.22, L * 0.5);
+  gl.addColorStop(0, "rgba(255,175,80,0.45)");
+  gl.addColorStop(0.55, "rgba(255,120,40,0.14)");
+  gl.addColorStop(1, "rgba(255,90,20,0)");
+  ctx.fillStyle = gl;
+  ctx.beginPath(); ctx.arc(0, L * 0.22, L * 0.5, 0, 6.2832); ctx.fill();
+
+  // translucent outer plume, feathering out as it goes
+  const plume = [
+    [L,        W * 1.45, shade(hot, 0.95) + ""],
+    [L * 0.78, W * 1.08, "rgba(255,168,60,0.55)"],
+    [L * 0.52, W * 0.74, "rgba(255,208,112,0.8)"],
+  ];
+  for (let pi = 0; pi < plume.length; pi++) {
+    const len = plume[pi][0], w = plume[pi][1];
+    ctx.globalAlpha = [0.38, 0.55, 0.8][pi];
+    ctx.fillStyle = plume[pi][2];
+    ctx.beginPath();
+    ctx.moveTo(-w * 0.62, 0);
+    ctx.quadraticCurveTo(-w, len * 0.45, 0, len);
+    ctx.quadraticCurveTo(w, len * 0.45, w * 0.62, 0);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // short white-hot core
+  ctx.fillStyle = "rgba(255,250,232,0.95)";
+  ctx.beginPath();
+  ctx.moveTo(-W * 0.42, 0);
+  ctx.quadraticCurveTo(-W * 0.38, L * 0.2, 0, L * 0.36);
+  ctx.quadraticCurveTo(W * 0.38, L * 0.2, W * 0.42, 0);
+  ctx.closePath(); ctx.fill();
+
+  // SHOCK DIAMONDS - the bright knots real engines make down in thick air,
+  // where the outside pressure keeps squeezing and releasing the jet
+  const da = rhoRel;
+  if (da > 0.05) {
+    for (let i = 0; i < 5; i++) {
+      const yy = L * (0.1 + i * 0.085);
+      const ww = W * 0.5 * (1 - i * 0.15);
+      ctx.fillStyle = "rgba(255,255,246," + (da * (0.8 - i * 0.13)) + ")";
+      ctx.beginPath();
+      ctx.moveTo(0, yy - ww * 1.6);
+      ctx.lineTo(ww, yy);
+      ctx.lineTo(0, yy + ww * 1.6);
+      ctx.lineTo(-ww, yy);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+}
+
+/* ---- JUPI, built to the design drawing ----
+   Top to bottom: antenna mast, flared nose cone, upper module, interstage
+   flare, the tall core body, and twin nozzles. A booster stands on each side.
+   Pieces disappear as they are thrown away. */
+
+function edgeOf() { return "rgba(18,23,36,0.7)"; }
+
+/* one solid booster, drawn around x = cx */
+function drawBooster(r, cx, lit, detail, lw, firing) {
+  const bw = r.bw, bh = r.boosterH, noseH = bw * 2.3, edge = edgeOf();
+  if (firing) {
+    ctx.save(); ctx.translate(cx, 0.1);
+    drawPlume(r, null, 1, firing.alt, 0.5, r.booster.color);
+    ctx.restore();
+  }
+  ctx.fillStyle = metalGrad(r.booster.color, bw, cx, lit);
+  ctx.fillRect(cx - bw, -bh, bw * 2, bh);
+  ctx.fillStyle = shade(r.booster.color, 1.05 * lit);
+  ctx.beginPath();
+  ctx.moveTo(cx - bw, -bh); ctx.lineTo(cx, -bh - noseH); ctx.lineTo(cx + bw, -bh);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = edge; ctx.lineWidth = lw;
+  ctx.beginPath();
+  ctx.moveTo(cx - bw, 0); ctx.lineTo(cx - bw, -bh); ctx.lineTo(cx, -bh - noseH);
+  ctx.lineTo(cx + bw, -bh); ctx.lineTo(cx + bw, 0); ctx.closePath(); ctx.stroke();
+  if (detail) {
+    ctx.strokeStyle = "rgba(0,0,0,0.3)"; ctx.lineWidth = lw * 0.7;
+    for (const fr of [0.32, 0.66]) {
+      const y = -bh * fr;
+      ctx.beginPath(); ctx.moveTo(cx - bw, y); ctx.lineTo(cx + bw, y); ctx.stroke();
+    }
+  }
+  ctx.fillStyle = "#4b5162";                     // flared skirt
+  ctx.beginPath();
+  ctx.moveTo(cx - bw * 0.55, 0); ctx.lineTo(cx + bw * 0.55, 0);
+  ctx.lineTo(cx + bw * 0.8, bw * 0.75); ctx.lineTo(cx - bw * 0.8, bw * 0.75);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = edge; ctx.lineWidth = lw; ctx.stroke();
+}
+
+/* the core body, with its twin nozzles */
+function drawCore(r, detail, lw, fire, alt) {
+  const tankH = r.tank.height, tw = r.tank.diameter / 2, edge = edgeOf();
+  const nozX = tw * 0.46;
+
+  if (fire > 0) for (const s of [-1, 1]) {
+    ctx.save(); ctx.translate(s * nozX, 0.36);
+    drawPlume(r, null, fire, alt, 0.66);
+    ctx.restore();
+  }
+
+  ctx.fillStyle = metalGrad(r.tank.color, tw);
+  ctx.fillRect(-tw, -tankH, tw * 2, tankH);
+  if (detail) {
+    ctx.lineWidth = lw * 0.7;
+    for (const fr of [0.16, 0.38, 0.6, 0.82]) {
+      const y = -tankH + tankH * fr;
+      ctx.strokeStyle = "rgba(0,0,0,0.26)";
+      ctx.beginPath(); ctx.moveTo(-tw, y); ctx.lineTo(tw, y); ctx.stroke();
+      ctx.strokeStyle = "rgba(255,255,255,0.14)";
+      ctx.beginPath(); ctx.moveTo(-tw, y + lw); ctx.lineTo(tw, y + lw); ctx.stroke();
+    }
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    for (const fr of [0.16, 0.6]) {
+      const y = -tankH + tankH * fr;
+      for (let x = -tw + tw * 0.22; x < tw; x += tw * 0.32) {
+        ctx.beginPath(); ctx.arc(x, y - lw * 2.2, lw * 0.7, 0, 6.2832); ctx.fill();
+      }
+    }
+    ctx.fillStyle = "rgba(190,45,45,0.55)";
+    ctx.fillRect(-tw, -tankH + tankH * 0.24, tw * 2, tankH * 0.026);
+  }
+  const soot = ctx.createLinearGradient(0, -tankH * 0.22, 0, 0);
+  soot.addColorStop(0, "rgba(28,24,26,0)");
+  soot.addColorStop(1, "rgba(28,24,26,0.55)");
+  ctx.fillStyle = soot;
+  ctx.fillRect(-tw, -tankH * 0.22, tw * 2, tankH * 0.22);
+  ctx.strokeStyle = edge; ctx.lineWidth = lw;
+  ctx.strokeRect(-tw, -tankH, tw * 2, tankH);
+
+  for (const s of [-1, 1]) {                     // twin nozzles
+    const cx = s * nozX, rT = tw * 0.24, rB = tw * 0.42;
+    const bg = ctx.createLinearGradient(cx - rB, 0, cx + rB, 0);
+    bg.addColorStop(0, "#22262f"); bg.addColorStop(0.34, "#767d8e");
+    bg.addColorStop(0.48, "#99a1b3"); bg.addColorStop(0.74, "#474d5b");
+    bg.addColorStop(1, "#1b1f27");
+    ctx.fillStyle = bg;
+    ctx.beginPath();
+    ctx.moveTo(cx - rT, 0);
+    ctx.quadraticCurveTo(cx - rT * 1.1, 0.26, cx - rB - s * 0.03, 0.38);
+    ctx.lineTo(cx + rB - s * 0.03, 0.38);
+    ctx.quadraticCurveTo(cx + rT * 1.1, 0.26, cx + rT, 0);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = edge; ctx.lineWidth = lw; ctx.stroke();
+    ctx.fillStyle = "#0c0e13";
+    ctx.beginPath(); ctx.ellipse(cx - s * 0.03, 0.38, rB * 0.95, rB * 0.2, 0, 0, 6.2832); ctx.fill();
+  }
+}
+
+/* ---- the service module: the barrel that holds the last engine and its fuel ---- */
+function drawService(r, yBot, detail, lw, showBell, fire, alt) {
+  const svcH = r.capEng.height, mw = r.capsule.diameter / 2, edge = edgeOf();
+  const yTop = yBot - svcH;
+
+  if (showBell && fire > 0) {
+    ctx.save(); ctx.translate(0, yBot + 0.3);
+    drawPlume(r, null, fire, alt, 0.42, r.capEng.color);
+    ctx.restore();
+  }
+  if (showBell) {                                  // engine bell, uncovered once the core has gone
+    const rT = mw * 0.3, rB = mw * 0.5;
+    const bg = ctx.createLinearGradient(-rB, 0, rB, 0);
+    bg.addColorStop(0, "#22262f"); bg.addColorStop(0.4, "#8d95a6"); bg.addColorStop(1, "#1b1f27");
+    ctx.fillStyle = bg;
+    ctx.beginPath();
+    ctx.moveTo(-rT, yBot - 0.02);
+    ctx.quadraticCurveTo(-rT * 1.1, yBot + 0.2, -rB, yBot + 0.3);
+    ctx.lineTo(rB, yBot + 0.3);
+    ctx.quadraticCurveTo(rT * 1.1, yBot + 0.2, rT, yBot - 0.02);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = edge; ctx.lineWidth = lw; ctx.stroke();
+  }
+
+  ctx.fillStyle = metalGrad(r.capEng.color, mw, 0, 0.85);
+  ctx.fillRect(-mw, yTop, mw * 2, svcH);
+  if (detail) {
+    ctx.strokeStyle = "rgba(0,0,0,0.28)"; ctx.lineWidth = lw * 0.7;
+    for (const fr of [0.34, 0.7]) {
+      const y = yTop + svcH * fr;
+      ctx.beginPath(); ctx.moveTo(-mw, y); ctx.lineTo(mw, y); ctx.stroke();
+    }
+    ctx.fillStyle = "rgba(255,255,255,0.14)";      // radiator panel
+    ctx.fillRect(-mw * 0.75, yTop + svcH * 0.42, mw * 1.5, svcH * 0.2);
+  }
+  ctx.strokeStyle = edge; ctx.lineWidth = lw;
+  ctx.strokeRect(-mw, yTop, mw * 2, svcH);
+}
+
+/* ---- the Jupi module: nose cone, window, antenna. The bit that comes home. ---- */
+function drawPod(r, yBot, detail, lw, t, f) {
+  const podH = r.capsule.height, mw = r.capsule.diameter / 2, edge = edgeOf();
+  const barH = podH * 0.42, coneH = podH * 0.36, antH = podH * 0.22;
+  const yBarTop = yBot - barH, yConeTop = yBarTop - coneH;
+  const aw = mw * 0.40;
+
+  ctx.fillStyle = metalGrad(r.capsule.color, mw);            // the module barrel
+  ctx.fillRect(-mw, yBarTop, mw * 2, barH);
+  ctx.strokeStyle = edge; ctx.lineWidth = lw;
+  ctx.strokeRect(-mw, yBarTop, mw * 2, barH);
+
+  ctx.fillStyle = metalGrad(r.capsule.color, mw * 0.8, 0, 1.06);   // nose cone
+  ctx.beginPath();
+  ctx.moveTo(-aw, yConeTop); ctx.lineTo(aw, yConeTop);
+  ctx.lineTo(mw, yBarTop); ctx.lineTo(-mw, yBarTop);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = edge; ctx.lineWidth = lw; ctx.stroke();
+
+  ctx.fillStyle = metalGrad(r.capsule.color, aw, 0, 0.85);         // antenna mast
+  ctx.fillRect(-aw, yConeTop - antH, aw * 2, antH);
+  ctx.strokeStyle = edge; ctx.lineWidth = lw;
+  ctx.strokeRect(-aw, yConeTop - antH, aw * 2, antH);
+  ctx.fillStyle = "rgba(255,255,255,0.35)";
+  ctx.fillRect(-aw, yConeTop - antH, aw * 2, Math.max(lw, antH * 0.06));
+
+  const wr = mw * 0.44;                                           // the crew window
+  drawViewport(0, yBarTop + barH * 0.5, wr, f ? f.th : 0);
+  if (SHOW_FACE) {
+    ctx.save(); ctx.translate(0, yBarTop + barH * 0.5);
+    drawFace(statusOf(f), wr * 1.5, t);
+    ctx.restore();
+  }
+}
+
+function drawJupi(r, f, t, z) {
+  const tankH = r.tank.height, svcH = r.capEng.height;
+  const tw = r.tank.diameter / 2, mw = r.capsule.diameter / 2;
+  const detail = z > 18;
+  const lw = Math.max(1 / z, r.wide * 0.016);
+  const edge = edgeOf();
+  const alt = f ? f.y : 0;
+
+  const srbOn  = f ? f.srbOn  : true;
+  const coreOn = f ? f.coreOn : true;
+  const svcOn  = f ? f.svcOn  : true;
+  const srbFire = f ? f.srbFire : 0;
+  const coreFire = f ? f.coreFire : 0;
+  const svcFire = f ? f.svcFire : 0;
+
+  const ySvcBot = -tankH;
+  const yPodBot = ySvcBot - svcH;
+  const bx = tw + r.bw + tw * 0.06;
+
+  ctx.lineJoin = "round";
+
+  /* ---- stage 1: the boosters ---- */
+  if (srbOn) {
+    for (const s of [-1, 1])
+      drawBooster(r, s * bx, s < 0 ? 1.0 : 0.74, detail, lw, srbFire > 0 ? { alt } : null);
+    ctx.strokeStyle = "#5a6176"; ctx.lineWidth = lw * 1.6;   // attachment struts
+    ctx.beginPath();
+    for (const s of [-1, 1]) {
+      ctx.moveTo(s * (bx - r.bw), -r.boosterH * 0.9); ctx.lineTo(s * tw, -r.boosterH * 0.78);
+      ctx.moveTo(s * (bx - r.bw), -r.boosterH * 0.22); ctx.lineTo(s * tw, -r.boosterH * 0.3);
+    }
+    ctx.stroke();
+  }
+
+  /* ---- stage 2: the core ---- */
+  if (coreOn) drawCore(r, detail, lw, coreFire, alt);
+
+  /* ---- stage 3: the service module ---- */
+  if (svcOn) {
+    drawService(r, ySvcBot, detail, lw, !coreOn, svcFire, alt);
+    if (coreOn) {                                  // the adapter skirt onto the core
+      ctx.fillStyle = metalGrad(r.capEng.color, tw, 0, 0.7);
+      ctx.beginPath();
+      ctx.moveTo(-mw, ySvcBot - svcH * 0.02); ctx.lineTo(mw, ySvcBot - svcH * 0.02);
+      ctx.lineTo(tw, ySvcBot); ctx.lineTo(-tw, ySvcBot);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = edge; ctx.lineWidth = lw; ctx.stroke();
+    }
+  }
+
+  /* ---- the Jupi module, which never leaves ---- */
+  drawPod(r, svcOn ? yPodBot : yPodBot, detail, lw, t, f);
+}
+
+/* ---- the bits Jupi has thrown away, tumbling off on their own ---- */
+function drawJetsam(r, f, z, toScrX, toScrY) {
+  if (!f) return;
+  const lw = Math.max(1 / z, r.wide * 0.016);
+  for (const j of f.jetsam) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, j.life / 1.8);
+    ctx.translate(toScrX(j.x), toScrY(j.y));
+    ctx.rotate(j.th);
+    ctx.scale(z, z);
+    if (j.kind === "srb")      drawBooster(r, (j.side ? 1 : -1) * (r.tank.diameter / 2 + r.bw), 0.85, false, lw, null);
+    else if (j.kind === "svc") drawService(r, 0, false, lw, true, 0, j.y);
+    else                       drawCore(r, false, lw, 0, j.y);
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ---- parachute, drawn straight up in the world, not tilted with Jupi ---- */
+function drawChute(sx, sy, z) {
+  const R = 2.0 * z, H = 2.9 * z;
+  ctx.strokeStyle = "#20263a"; ctx.lineWidth = Math.max(1, 0.05 * z);
+  for (const dx of [-R * 0.85, -R * 0.3, R * 0.3, R * 0.85]) {
+    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + dx, sy - H * 0.62); ctx.stroke();
+  }
+  const cols = ["#ff5d6c", "#ffc24a", "#39d98a", "#4cc9f0"];
+  for (let i = 0; i < 4; i++) {
+    ctx.fillStyle = cols[i];
+    ctx.beginPath();
+    const a0 = Math.PI + i * (Math.PI / 4), a1 = a0 + Math.PI / 4;
+    ctx.moveTo(sx, sy - H * 0.62);
+    ctx.arc(sx, sy - H * 0.62, R, a0, a1);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.strokeStyle = "#20263a";
+  ctx.beginPath(); ctx.arc(sx, sy - H * 0.62, R, Math.PI, 0); ctx.stroke();
+}
+
+/* ---- the whole scene ---- */
+function render(r, f, t) {
+  const alt = f ? f.y : 0;
+  const z = zoomFor(alt, lengthNow(r, f));
+  const shake = f ? f.shake : 0;
+  const shx = (Math.random() - 0.5) * shake * 5;
+  const shy = (Math.random() - 0.5) * shake * 5;
+  const groundY = VH * 0.74;                       // where Jupi sits on screen
+  const camX = f ? f.x : 0;
+  const toScrX = wx => VW / 2 + (wx - camX) * z + shx;
+  const toScrY = wy => groundY - (wy - alt) * z + shy;
+
+  // ---- sky ----
+  const k = clamp(alt / 6000, 0, 1);
+  const g = ctx.createLinearGradient(0, 0, 0, VH);
+  g.addColorStop(0, mixHex("#3f95d8", "#01030a", Math.pow(k, 0.75)));
+  g.addColorStop(1, mixHex("#bfe4f7", "#0a1230", Math.pow(k, 0.85)));
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, VW, VH);
+
+  // ---- stars ----
+  const sa = clamp((alt - 1200) / 3200, 0, 1);
+  if (sa > 0.01) {
+    for (const s of STARS) {
+      const sy = (s.y * VH + alt * 0.02) % VH;
+      ctx.globalAlpha = sa * (0.55 + 0.45 * Math.sin(t * 2 + s.tw));
+      ctx.fillStyle = "#fff";
+      ctx.beginPath(); ctx.arc(s.x * VW, sy, s.r, 0, 6.2832); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ---- clouds ----
+  for (const c of CLOUDS) {
+    const sy = toScrY(c.alt);
+    if (sy < -80 || sy > VH + 80) continue;
+    const sx = toScrX(c.x);
+    ctx.globalAlpha = c.a * (1 - clamp((alt - 3000) / 3000, 0, 1));
+    ctx.fillStyle = "#fff";
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath();
+      ctx.ellipse(sx + i * c.w * 0.5 * z * 0.06, sy, c.w * z * 0.055, c.h * z * 0.055, 0, 0, 6.2832);
+      ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  // ---- altitude markers ----
+  const stepM = alt > 2500 ? 1000 : alt > 800 ? 500 : 100;
+  ctx.font = "11px Trebuchet MS, sans-serif";
+  for (let a = Math.max(stepM, Math.floor((alt - VH / z) / stepM) * stepM);
+       a < alt + VH / z; a += stepM) {
+    const sy = toScrY(a);
+    if (sy < 0 || sy > VH) continue;
+    ctx.strokeStyle = "#ffffff22"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(VW - 78, sy); ctx.lineTo(VW - 14, sy); ctx.stroke();
+    ctx.fillStyle = "#ffffff66"; ctx.textAlign = "right";
+    ctx.fillText(a >= 1000 ? (a / 1000) + " km" : a + " m", VW - 82, sy + 4);
+  }
+
+  // ---- ground ----
+  const gy = toScrY(0);
+  if (gy < VH + 20) {
+    const gg = ctx.createLinearGradient(0, gy, 0, VH);
+    gg.addColorStop(0, "#6d9a5d"); gg.addColorStop(0.35, "#4e8f43"); gg.addColorStop(1, "#2f5f2c");
+    ctx.fillStyle = gg;
+    ctx.fillRect(0, gy, VW, VH - gy + 2);
+    // distance haze: far ground washes out into the air above it
+    const haze = 1 - k;
+    if (haze > 0.02) {
+      const hz = ctx.createLinearGradient(0, gy - VH * 0.1, 0, gy + VH * 0.06);
+      hz.addColorStop(0, "rgba(203,226,244,0)");
+      hz.addColorStop(0.62, "rgba(203,226,244," + (0.42 * haze) + ")");
+      hz.addColorStop(1, "rgba(203,226,244,0)");
+      ctx.fillStyle = hz;
+      ctx.fillRect(0, gy - VH * 0.1, VW, VH * 0.16);
+    }
+
+    // concrete pad with a flame trench, and a steel lattice gantry
+    const px = toScrX(0);
+    const padH = Math.max(3, 0.45 * z);
+    const padW = Math.max(2.3, r.span + 0.7);
+    ctx.fillStyle = "#7b8396";
+    ctx.fillRect(px - padW * z, gy, padW * 2 * z, padH);
+    ctx.fillStyle = "#5b6274";
+    ctx.fillRect(px - padW * z, gy + padH, padW * 2 * z, Math.max(2, 0.2 * z));
+    ctx.fillStyle = "#2e3442";                          // scorched flame trench
+    ctx.fillRect(px - 0.75 * z, gy, 1.5 * z, padH);
+
+    const gx = px + (r.span + 0.2) * z, gw = Math.max(4, 0.6 * z);
+    const top = gy - RAIL * z, bays = 7;
+    ctx.strokeStyle = "#49506a";
+    ctx.lineWidth = Math.max(1.5, 0.075 * z);
+    ctx.beginPath();
+    ctx.moveTo(gx, gy); ctx.lineTo(gx, top);
+    ctx.moveTo(gx + gw, gy); ctx.lineTo(gx + gw, top);
+    ctx.stroke();
+    ctx.lineWidth = Math.max(1, 0.038 * z);             // X-bracing
+    ctx.beginPath();
+    for (let i = 0; i < bays; i++) {
+      const y0 = gy - RAIL * z * (i / bays), y1 = gy - RAIL * z * ((i + 1) / bays);
+      ctx.moveTo(gx, y0);      ctx.lineTo(gx + gw, y1);
+      ctx.moveTo(gx + gw, y0); ctx.lineTo(gx, y1);
+      ctx.moveTo(gx, y1);      ctx.lineTo(gx + gw, y1);
+    }
+    ctx.stroke();
+    ctx.lineWidth = Math.max(1.5, 0.06 * z);            // service arms to the rocket
+    ctx.beginPath();
+    for (let i = 1; i < 4; i++) {
+      const yy = gy - RAIL * z * (i / 4.2);
+      ctx.moveTo(px, yy); ctx.lineTo(gx, yy);
+    }
+    ctx.stroke();
+  }
+
+  // ---- exhaust and debris ----
+  for (const b of bits) {
+    const a = clamp(b.life / b.max, 0, 1);
+    ctx.globalAlpha = Math.pow(a, b.punch) * 0.85;
+    ctx.fillStyle = b.color;
+    ctx.beginPath();
+    ctx.arc(toScrX(b.x), toScrY(b.y), Math.max(1, b.size * z * (1 + (1 - a) * b.spread)), 0, 6.2832);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // ---- the bits Jupi has thrown away ----
+  drawJetsam(r, f, z, toScrX, toScrY);
+
+  // ---- Jupi ----
+  if (!f || f.outcome !== "crashed" || f.t < 0.01) {
+    const sx = toScrX(f ? f.x : 0), sy = toScrY(f ? f.y : 0);
+    if (f && f.chuteOut)
+      drawChute(toScrX(f.x + r.L * Math.sin(f.th)), toScrY(f.y + r.L * Math.cos(f.th)), z);
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.rotate(f ? f.th : 0);
+    ctx.scale(z, z);
+    drawJupi(r, f, t, z);
+    ctx.restore();
+  }
+}
+/* --------------------------------------------------------------------------
+   SOUND - all made up out of thin air, no sound files
+   -------------------------------------------------------------------------- */
+const Sound = {
+  ac: null, on: true, rumble: null, rgain: null,
+  wake() {
+    if (this.ac) return;
+    try { this.ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { this.on = false; }
+  },
+  noiseBuf() {
+    const n = this.ac.sampleRate * 2, b = this.ac.createBuffer(1, n, this.ac.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    return b;
+  },
+  startRumble() {
+    if (!this.ac || !this.on || this.rumble) return;
+    try {
+      const src = this.ac.createBufferSource();
+      src.buffer = this.noiseBuf(); src.loop = true;
+      const lp = this.ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 420;
+      const g = this.ac.createGain(); g.gain.value = 0;
+      src.connect(lp); lp.connect(g); g.connect(this.ac.destination);
+      src.start();
+      this.rumble = src; this.rgain = g;
+    } catch (e) {}
+  },
+  setRumble(v) {
+    if (!this.rgain || !this.ac) return;
+    try { this.rgain.gain.setTargetAtTime(this.on ? v * 0.28 : 0, this.ac.currentTime, 0.05); } catch (e) {}
+  },
+  stopRumble() {
+    if (!this.rumble) return;
+    try { this.setRumble(0); const s = this.rumble; setTimeout(() => { try { s.stop(); } catch (e) {} }, 400); } catch (e) {}
+    this.rumble = null; this.rgain = null;
+  },
+  bang() {
+    if (!this.ac || !this.on) return;
+    try {
+      const src = this.ac.createBufferSource(); src.buffer = this.noiseBuf();
+      const lp = this.ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 900;
+      const g = this.ac.createGain();
+      g.gain.setValueAtTime(0.55, this.ac.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, this.ac.currentTime + 0.6);
+      src.connect(lp); lp.connect(g); g.connect(this.ac.destination);
+      src.start(); src.stop(this.ac.currentTime + 0.65);
+    } catch (e) {}
+  },
+  fanfare() {
+    if (!this.ac || !this.on) return;
+    try {
+      [523, 659, 784, 1047].forEach((f, i) => {
+        const o = this.ac.createOscillator(), g = this.ac.createGain();
+        o.type = "triangle"; o.frequency.value = f;
+        const t0 = this.ac.currentTime + i * 0.11;
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(0.22, t0 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.34);
+        o.connect(g); g.connect(this.ac.destination);
+        o.start(t0); o.stop(t0 + 0.36);
+      });
+    } catch (e) {}
+  },
+  pop() {
+    if (!this.ac || !this.on) return;
+    try {
+      const o = this.ac.createOscillator(), g = this.ac.createGain();
+      o.type = "sine"; o.frequency.setValueAtTime(700, this.ac.currentTime);
+      o.frequency.exponentialRampToValueAtTime(240, this.ac.currentTime + 0.16);
+      g.gain.setValueAtTime(0.3, this.ac.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, this.ac.currentTime + 0.2);
+      o.connect(g); g.connect(this.ac.destination);
+      o.start(); o.stop(this.ac.currentTime + 0.22);
+    } catch (e) {}
+  },
+};
+
+/* --------------------------------------------------------------------------
+   HALL OF FAME - saved in this browser only. Nothing is ever sent anywhere.
+   -------------------------------------------------------------------------- */
+const BOARD_KEY = "jupi.board.v1", WHO_KEY = "jupi.who.v1";
+function loadBoard() {
+  try { const v = JSON.parse(localStorage.getItem(BOARD_KEY) || "[]"); return Array.isArray(v) ? v : []; }
+  catch (e) { return []; }
+}
+function saveBoard(b) { try { localStorage.setItem(BOARD_KEY, JSON.stringify(b.slice(0, 12))); } catch (e) {} }
+function whoAmI() {
+  let who = null;
+  try { who = localStorage.getItem(WHO_KEY); } catch (e) {}
+  if (!who) {
+    try { who = window.prompt("What's your name, pilot?", "Pilot"); } catch (e) {}
+    who = (who || "Pilot").toString().slice(0, 14);
+    try { localStorage.setItem(WHO_KEY, who); } catch (e) {}
+  }
+  return who;
+}
+function drawBoard(hi) {
+  const b = loadBoard(), el = document.getElementById("boardList");
+  if (!b.length) { el.innerHTML = '<div class="bl"><span>nobody yet&hellip;</span><span></span></div>'; return; }
+  el.innerHTML = b.slice(0, 8).map((e, i) =>
+    '<div class="bl' + (i === hi ? ' me' : '') + '"><span>' + (i + 1) + '. ' + esc(e.who) +
+    ' &middot; ' + esc(e.rocket) + '</span><span>' + Math.round(e.alt) + ' m</span></div>').join("");
+}
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+}
+
+/* --------------------------------------------------------------------------
+   THE CONTROL PANEL
+   -------------------------------------------------------------------------- */
+const $ = id => document.getElementById(id);
+let sel = null, rocket = null, flight = null, mode = "build", sessionBest = 0, lastRealT = 0, ffStart = 0;
+
+function fillSelect(el, list, chosen) {
+  el.innerHTML = list.map(p => '<option' + (p.name === chosen ? " selected" : "") + '>' + esc(p.name) + '</option>').join("");
+}
+
+function syncFuelSlider() {
+  const tank = byName(JUPI.tanks, sel.tank);
+  const r = $("rFuel");
+  r.max = tank.maxFuel;
+  r.step = tank.maxFuel > 600 ? 20 : 10;
+  if (+r.value > tank.maxFuel) r.value = tank.maxFuel;
+  sel.fuel = +r.value;
+}
+
+function readPanel() {
+  sel.boosters      = $("selBoost").value;
+  sel.boosterSize   = +$("rBoost").value;
+  sel.tank          = $("selTank").value;
+  sel.engine        = $("selEngine").value;
+  sel.capsule       = $("selCapsule").value;
+  sel.capsuleEngine = $("selCapEng").value;
+  sel.capsuleFuel   = +$("rCapFuel").value;
+  sel.throttle      = +$("rThr").value;
+  sel.parachute     = $("cChute").checked;
+  syncFuelSlider();
+  refresh();
+}
+
+function refresh() {
+  rocket = buildRocket(sel);
+  const lift = atLiftoff(rocket);
+  const mb   = massBalance(rocket, lift);
+  const g    = JUPI.world.gravity;
+  const wet  = mb.m;
+  const push = rocket.srb.thrust + rocket.core.thrust;   // what lights on the pad
+  const twr  = push / (wet * g);
+  const marg = mb.com - mb.cop;
+  const tS = rocket.srb.rate  > 0 ? rocket.srb.prop  / rocket.srb.rate  : 0;
+  const tC = rocket.core.rate > 0 ? rocket.core.prop / rocket.core.rate : 0;
+  const tU = rocket.svc.rate  > 0 ? rocket.svc.prop  / rocket.svc.rate  : 0;
+
+  $("vFuel").textContent    = Math.round(rocket.core.prop) + " kg";
+  $("vCapFuel").textContent = Math.round(rocket.svc.prop) + " kg";
+  $("vBoost").textContent   = sel.boosterSize.toFixed(2) + " m2";
+  $("vThr").textContent     = sel.throttle + "%";
+
+  const cls = (v, okv, warnv) => v >= okv ? "good" : v >= warnv ? "warn" : "bad";
+  $("stats").innerHTML =
+    row("Weight on the pad", Math.round(wet) + " kg") +
+    row("Liftoff push", Math.round(push) + " N") +
+    row("Lift power", twr.toFixed(2) + " x", cls(twr, 1.5, 1.0)) +
+    row("Burns 1+2+3", tS.toFixed(0) + "s + " + tC.toFixed(0) + "s + " + tU.toFixed(0) + "s") +
+    row("Steadiness", steadyWord(marg) + " (" + marg.toFixed(2) + " m)",
+        marg > WOBBLY ? "good" : marg > TUMBLES ? "warn" : "bad");
+
+  const allDry = rocket.srb.dry + rocket.core.dry + rocket.svc.dry + rocket.pod.dry;
+  const dryTwr = push / (allDry * g);
+  let msg, tone = "var(--go)";
+  if (dryTwr < 1)          { msg = "<b>WAY too heavy!</b> Even with every tank empty this could not lift off."; tone = "var(--bad)"; }
+  else if (twr < 1)        { msg = "<b>TOO HEAVY to lift off!</b> Jupi will sit there burning fuel until it is light enough to move. Use less fuel, or bigger boosters."; tone = "var(--bad)"; }
+  else if (marg < TUMBLES) { msg = "<b>Boosters too small!</b> Jupi will tumble like a thrown stick. Make them bigger."; tone = "var(--bad)"; }
+  else if (twr < 1.4)      { msg = "Jupi will crawl off the pad &mdash; and a slow rocket gets shoved sideways by the wind."; tone = "var(--hot2)"; }
+  else if (marg < WOBBLY)  { msg = "Boosters are on the small side. Jupi will wobble before it settles."; tone = "var(--hot2)"; }
+  else if (rocket.svc.prop <= 0) { msg = "<b>Stage 3 has no fuel.</b> The service module is just dead weight &mdash; give it some and watch how much higher Jupi goes!"; tone = "var(--hot2)"; }
+  else                     { msg = "Looking good. Hit <b>LAUNCH</b>!"; }
+  const a = $("advice"); a.innerHTML = msg; a.style.borderLeftColor = tone;
+  $("launch").disabled = false;
+}
+// A bare balance number does not predict the outcome on its own, so say the
+// verdict out loud. These cut-offs were measured by flying the rocket, not guessed.
+function steadyWord(m) {
+  return m > WOBBLY ? "rock steady" : m > TUMBLES ? "wobbly" : "WILL TUMBLE";
+}
+function row(k, v, c) {
+  return '<div class="row"><span>' + k + '</span><b' + (c ? ' class="' + c + '"' : '') + '>' + v + "</b></div>";
+}
+
+/* --------------------------------------------------------------------------
+   LAUNCH!
+   -------------------------------------------------------------------------- */
+function launch() {
+  if (mode === "flying") return;
+  readPanel();
+  Sound.wake();
+  Sound.startRumble();
+  flight = newFlight(rocket);
+  bits = [];
+  mode = "flying";
+  ffStart = 0;
+  $("result").classList.remove("on");
+  $("launch").disabled = true;
+}
+
+const STATUS = {
+  pad:     ["ON THE PAD",            "#8fa0c8"],
+  stuck:   ["TOO HEAVY - BURNING FUEL", "#ff5d6c"],
+  srb:     ["STAGE 1 - BOOSTERS",    "#ff7a2f"],
+  core:    ["STAGE 2 - CORE BURN",   "#ff9a3f"],
+  svc:     ["STAGE 3 - SERVICE MODULE","#4cc9f0"],
+  pod:     ["JUPI MODULE ALONE",     "#39d98a"],
+  thrust:  ["ENGINE BURNING",        "#ff9a3f"],
+  coast:   ["COASTING UP",           "#eef3ff"],
+  falling: ["FALLING",               "#ffc24a"],
+  tumble:  ["TUMBLING!",             "#ff5d6c"],
+  chute:   ["PARACHUTE OUT",         "#39d98a"],
+  landed:  ["LANDED SAFELY",         "#39d98a"],
+  crashed: ["CRASHED",               "#ff5d6c"],
+};
+function showStatus(f) {
+  const st = STATUS[statusOf(f)] || STATUS.pad;
+  const el = $("hStat");
+  if (el.textContent !== st[0]) el.textContent = st[0];
+  el.style.color = st[1];
+}
+
+function timeScaleFor(f) {
+  if (!f.lifted) return f.t > 2 ? 8 : 1;      // struggling on the pad - don't make them wait
+  if (f.vy < 0 && f.y > 40) return f.chuteOut ? 40 : 12;   // coming down - fast forward
+  return 1;
+}
+
+function finish() {
+  mode = "done";
+  Sound.stopRumble();
+  const f = flight;
+  const alt = Math.round(f.apogee);
+
+  if (f.outcome === "crashed" || f.outcome === "tumbled") {
+    Sound.bang();
+    for (let i = 0; i < 64; i++) {
+      const a = Math.random() * 6.2832, s = 2 + Math.random() * 11;
+      const fire = i < 22;
+      puff(f.x, Math.max(f.y, 0.4), Math.cos(a) * s, Math.abs(Math.sin(a) * s) * 1.15,
+           fire ? 0.3 + Math.random() * 0.35 : 0.8 + Math.random() * 0.9,
+           fire ? 0.16 + Math.random() * 0.2 : 0.07 + Math.random() * 0.13,
+           fire ? ["#ffc24a", "#ff7a2f"][i & 1] : ["#6a7183", "#ff5d6c", "#b9c0d4"][i % 3],
+           { weight: fire ? 2 : 16, spread: fire ? 1.4 : 0, punch: fire ? 1.2 : 0.55, drag: 0.98 });
+    }
+  }
+
+  const struggled = f.padTime > 3
+    ? "Jupi was too heavy to lift off! It sat on the pad for " + Math.round(f.padTime) +
+      "s burning fuel away until it was light enough to move. "
+    : "";
+
+  const why = {
+    landed:   "Perfect landing! The parachute did its job.",
+    crashed:  "SMASH! Jupi hit the ground at " + Math.round(f.landSpeed) + " m/s.",
+    tumbled:  "Jupi tumbled! It went sideways and never came back.",
+    tooheavy: "Jupi was too heavy and never left the pad.",
+  }[f.outcome] || "Jupi came back down.";
+
+  const tip = (f.padTime > 3) ? "Less fuel would actually fly HIGHER. Try it!"
+    : (f.outcome === "landed" && rocket.svc.prop <= 0)
+      ? "Stage 3 never fired &mdash; it had no fuel. Give the service module some and see what happens."
+    : {
+    tumbled:  "Bigger boosters would hold it straight.",
+    tooheavy: "Try less fuel, or bigger boosters.",
+    crashed:  sel.parachute ? "The chute only works if Jupi is still pointing the right way." : "Switch the parachute on for a soft landing.",
+    landed:   "Now try to beat it. Which stage would you give more fuel?",
+  }[f.outcome] || "";
+
+  $("score").textContent = alt.toLocaleString() + " m";
+  $("why").innerHTML = struggled + why + (tip ? '<br><span style="font-size:14px;color:#8fa0c8">' + tip + "</span>" : "");
+
+  let hi = -1;
+  if (alt > 0) {
+    const board = loadBoard();
+    const best = board.length ? board[0].alt : 0;
+    const who = whoAmI();
+    board.push({ who, rocket: rocket.engine.name.split(" ")[0] + "+" + rocket.capEng.name.split(" ")[0] + "+" + rocket.capsule.name.split(" ")[0], alt, when: Date.now() });
+    board.sort((a, b) => b.alt - a.alt);
+    saveBoard(board);
+    hi = board.findIndex(e => e.alt === alt && e.who === who);
+    if (alt > best) { $("record").textContent = "NEW RECORD!"; Sound.fanfare(); }
+    else { $("record").textContent = ""; Sound.pop(); }
+    if (alt > sessionBest) sessionBest = alt;
+  } else { $("record").textContent = ""; }
+
+  $("bestAlt").textContent = sessionBest ? sessionBest.toLocaleString() + " m" : "—";
+  drawBoard(hi);
+  $("result").classList.add("on");
+  $("launch").disabled = false;
+}
+
+/* --------------------------------------------------------------------------
+   THE MAIN LOOP
+   -------------------------------------------------------------------------- */
+let acc = 0;
+function frame(now) {
+  const dtReal = Math.min((now - lastRealT) / 1000 || 0, 0.1);
+  lastRealT = now;
+  const t = now / 1000;
+
+  if (mode === "flying" && flight) {
+    const ts = timeScaleFor(flight);
+    if (ts > 1 && !ffStart) ffStart = now;
+    if (ts === 1) ffStart = 0;
+    acc += dtReal * ts;
+    let steps = 0;
+    while (acc >= DT && steps < 2200 && flight.alive) { stepFlight(flight); stepJetsam(flight, DT); acc -= DT; steps++; }
+    if (acc > DT * 2200) acc = 0;
+
+    // if a parachute drift is taking forever, just resolve it
+    if (flight.alive && ffStart && now - ffStart > 7000) {
+      let guard = 0;
+      while (flight.alive && guard++ < 600000) stepFlight(flight);
+      flight.alive = false;
+      if (!flight.outcome) flight.outcome = "landed";
+    }
+
+    // exhaust
+    if (flight.throttleNow > 0) {
+      const ax = Math.sin(flight.th), ay = Math.cos(flight.th);
+      for (let i = 0; i < 3; i++) {
+        const hot = Math.random() < 0.5;
+        puff(flight.x - ax * 0.4, flight.y - ay * 0.4,
+             -ax * (14 + Math.random() * 16) + (Math.random() - 0.5) * 7 + flight.vx * 0.25,
+             -ay * (14 + Math.random() * 16) + (Math.random() - 0.5) * 7 + flight.vy * 0.25,
+             hot ? 0.14 + Math.random() * 0.14 : 0.5 + Math.random() * 0.7,
+             hot ? 0.14 + Math.random() * 0.14 : 0.16 + Math.random() * 0.26,
+             hot ? "#ffc24a" : "#b9c0d4",
+             hot ? { weight: 1, spread: 0.5, punch: 1.1 } : { weight: 2.5, spread: 1.1, punch: 1.6 });
+      }
+    }
+    Sound.setRumble(flight.throttleNow);
+
+    $("hAlt").textContent  = Math.round(flight.y).toLocaleString();
+    $("hSpd").textContent  = Math.round(Math.hypot(flight.vx, flight.vy));
+    $("hTime").textContent = flight.t.toFixed(1);
+    const pct = (a, b) => (b > 0 ? Math.max(0, a / b) * 100 : 0) + "%";
+    $("fS").style.width = pct(flight.srbProp, rocket.srb.prop);
+    $("fC").style.width = pct(flight.coreProp, rocket.core.prop);
+    $("fU").style.width = pct(flight.svcProp, rocket.svc.prop);
+    $("barS").style.opacity = flight.srbOn ? 1 : 0.22;
+    $("barC").style.opacity = flight.coreOn ? 1 : 0.22;
+    $("barU").style.opacity = (flight.svcOn && flight.svcProp > 0) ? 1 : 0.22;
+
+    if (!flight.alive) finish();
+  }
+
+  stepBits(dtReal);
+  if (flight && !flight.alive) stepJetsam(flight, dtReal);
+  showStatus(mode === "build" ? null : flight);
+  render(rocket, mode === "build" ? null : flight, t);
+
+  // shout out the big moments: LIFT OFF, BOOSTERS AWAY, CORE SEP
+  if (flight && flight.events.length) {
+    const e = flight.events[flight.events.length - 1];
+    const age = flight.t - e.t;
+    if (age >= 0 && age < 2.4) {
+      const fade = age < 0.2 ? age / 0.2 : (age > 1.8 ? (2.4 - age) / 0.6 : 1);
+      ctx.globalAlpha = Math.max(0, Math.min(1, fade));
+      ctx.textAlign = "center";
+      ctx.font = "bold 31px Trebuchet MS, sans-serif";
+      ctx.fillStyle = "#00000088";
+      ctx.fillText(e.text, VW / 2 + 2, VH * 0.27 + 2);
+      ctx.fillStyle = "#ffc24a";
+      ctx.fillText(e.text, VW / 2, VH * 0.27);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  if (mode === "flying" && ffStart) {
+    ctx.fillStyle = "#ffffffcc";
+    ctx.font = "bold 17px Trebuchet MS, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("▶▶  fast forward", VW / 2, 34);
+  }
+  requestAnimationFrame(frame);
+}
+
+/* --------------------------------------------------------------------------
+   START EVERYTHING UP
+   -------------------------------------------------------------------------- */
+function showOops(msg, list) {
+  $("oopsMsg").innerHTML = msg;
+  $("oopsList").innerHTML = (list || []).map(p => "<li>" + esc(p) + "</li>").join("");
+  $("oops").classList.add("on");
+}
+
+function boot() {
+  const problems = checkParts();
+  if (problems.length) {
+    showOops("Something in the parts list isn&rsquo;t quite right, so Jupi can&rsquo;t be built yet. " +
+             "Here&rsquo;s what to fix:", problems.slice(0, 8));
+    return;
+  }
+
+  const s = JUPI.startingRocket;
+  sel = { boosters: s.boosters, boosterSize: s.boosterSize,
+          tank: s.tank, engine: s.engine, fuel: s.fuel,
+          capsule: s.capsule, capsuleEngine: s.capsuleEngine,
+          capsuleFuel: s.capsuleFuel == null ? 0 : s.capsuleFuel,
+          throttle: s.throttle == null ? 100 : s.throttle,
+          parachute: s.parachute !== false };
+
+  fillSelect($("selBoost"),   JUPI.boosters,       sel.boosters);
+  fillSelect($("selTank"),    JUPI.tanks,          sel.tank);
+  fillSelect($("selEngine"),  JUPI.engines,        sel.engine);
+  fillSelect($("selCapsule"), JUPI.capsules,       sel.capsule);
+  fillSelect($("selCapEng"),  JUPI.capsuleEngines, sel.capsuleEngine);
+  $("rBoost").value   = sel.boosterSize;
+  $("rCapFuel").value = sel.capsuleFuel;
+  $("rThr").value = sel.throttle;
+  $("cChute").checked = sel.parachute;
+  syncFuelSlider();
+  $("rFuel").value = Math.min(sel.fuel, +$("rFuel").max);
+
+  for (const id of ["selBoost", "rBoost", "selTank", "selEngine", "rFuel",
+                    "selCapsule", "selCapEng", "rCapFuel", "rThr", "cChute"])
+    $(id).addEventListener("input", readPanel);
+
+  $("launch").addEventListener("click", launch);
+  $("again").addEventListener("click", launch);
+  $("tweak").addEventListener("click", () => { $("result").classList.remove("on"); mode = "build"; flight = null; });
+  $("clear").addEventListener("click", () => {
+    if (window.confirm("Clear the Hall of Fame for good?")) { saveBoard([]); drawBoard(-1); }
+  });
+  $("mute").addEventListener("click", () => {
+    Sound.on = !Sound.on;
+    $("mute").textContent = Sound.on ? "SOUND ON" : "SOUND OFF";
+    if (!Sound.on) Sound.setRumble(0);
+  });
+  window.addEventListener("keydown", e => {
+    if (e.code === "Space") { e.preventDefault(); if (mode !== "flying") launch(); }
+  });
+
+  resize();
+  readPanel();
+  drawBoard(-1);
+  lastRealT = performance.now();
+  requestAnimationFrame(frame);
+}
+
+// Last-resort safety net: if anything at all goes wrong while Jupi is running,
+// show a friendly message instead of a frozen or blank page.
+window.addEventListener("error", function (e) {
+  if (document.getElementById("oops").classList.contains("on")) return;
+  showOops("Jupi hit a snag while flying. If you just edited the parts list, check that " +
+           "every number is a plain number and every line ends with a comma.",
+           [String((e && e.message) || e)]);
+});
+
+try { boot(); }
+catch (err) {
+  showOops("Jupi hit a snag while starting up. If you just edited the parts list, " +
+           "check for a missing comma or a stray quote mark.", [String(err && err.message || err)]);
+}
+</script>
