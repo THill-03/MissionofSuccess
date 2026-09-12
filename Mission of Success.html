@@ -1,4 +1,5 @@
 <title>Mission of Success</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>
   :root{
     --bg:#0b1020; --panel:#151c33; --panel2:#1d2745; --ink:#eef3ff; --dim:#8fa0c8;
@@ -7,7 +8,7 @@
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
        font:16px/1.4 "Trebuchet MS","Segoe UI",system-ui,sans-serif;overflow:hidden}
-  #app{display:flex;height:100vh;width:100vw}
+  #app{display:flex;height:100vh;height:100dvh;width:100vw}
 
   /* ---------- builder panel ---------- */
   #builder{width:330px;flex:0 0 330px;background:var(--panel);border-right:4px solid var(--line);
@@ -15,7 +16,7 @@
   #scroll{flex:1 1 auto;overflow-y:auto;min-height:0;position:relative}
   #scroll::after{content:"";position:sticky;bottom:0;display:block;height:14px;
                  background:linear-gradient(transparent,var(--panel));pointer-events:none}
-  #brand{padding:8px 16px 7px;border-bottom:3px solid var(--line)}
+  #brand{padding:8px 16px 7px;border-bottom:3px solid var(--line);position:relative}
   #brand h1{margin:0;font-size:20px;line-height:1.1;letter-spacing:1.2px;white-space:nowrap;
             background:linear-gradient(90deg,var(--hot2),var(--hot));-webkit-background-clip:text;
             background-clip:text;color:transparent}
@@ -97,6 +98,76 @@
   #clear{background:none;border:none;color:#54618c;font:inherit;font-size:11px;cursor:pointer;
          text-decoration:underline;margin-top:7px;padding:0}
 
+  /* ---------- phones and small screens ----------
+     The builder becomes a slide-up drawer so the flight gets the whole screen.
+     Two thumb-sized buttons sit over the canvas: BUILD opens the drawer,
+     LAUNCH flies without opening anything. */
+  #mobilebar{position:absolute;left:0;right:0;bottom:0;display:none;gap:10px;
+             padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+             background:linear-gradient(transparent,#0b1020dd 45%);z-index:25}
+  #mobilebar button{flex:1;padding:16px 8px;font:inherit;font-size:19px;font-weight:bold;
+                    letter-spacing:1.5px;border-radius:14px;cursor:pointer}
+  #mBuild{background:var(--panel2);color:var(--ink);border:2px solid var(--line)}
+  #mLaunch{background:linear-gradient(180deg,var(--hot2),var(--hot));color:#2a1300;border:none}
+  #mLaunch:disabled{filter:grayscale(.65)}
+  #mDone{display:none;position:absolute;right:12px;top:9px;padding:8px 14px;
+         font:inherit;font-size:13px;font-weight:bold;letter-spacing:1px;
+         background:var(--panel2);color:var(--ink);border:2px solid var(--line);
+         border-radius:10px;cursor:pointer}
+
+  @media (max-width: 860px), (max-height: 540px) {
+    #builder{position:fixed;left:0;right:0;bottom:0;width:auto;flex:none;
+             height:90dvh;max-height:90dvh;z-index:30;
+             border-right:none;border-top:4px solid var(--line);
+             border-radius:18px 18px 0 0;box-shadow:0 -14px 40px #0008;
+             transform:translateY(102%);transition:transform .28s ease}
+    #builder.open{transform:translateY(0)}
+    #mobilebar{display:flex}
+    #mDone{display:block}
+    body.drawer #mobilebar{display:none}
+    #mute{bottom:calc(84px + env(safe-area-inset-bottom))}
+    #best{font-size:11px}
+    #hud .big{font-size:26px}
+
+    /* fingers are not mouse pointers - and 16px stops iOS zooming on focus */
+    select{padding:11px 10px;font-size:16px;border-radius:10px}
+    input[type=range]{height:34px}
+    .chk{margin-top:12px;font-size:15px}
+    .chk input{width:24px;height:24px}
+    label{font-size:14px;margin:8px 0 3px}
+    .sect{padding:10px 16px 12px}
+    #stats{font-size:14px}
+    .row{padding:4px 0}
+    #advice{font-size:14px}
+    #launch{padding:16px;font-size:22px}
+    #card{padding:22px 20px;min-width:0;width:min(92vw,380px)}
+    #score{font-size:44px}
+    #cardBtns button{padding:15px 8px}
+  }
+
+  /* On a phone held sideways there is barely any height, so the drawer takes
+     the whole screen and the readouts go two-up to leave room for the controls. */
+  @media (max-height: 540px) {
+    #builder{height:100dvh;max-height:100dvh;border-radius:0}
+    #brand{padding:5px 16px 4px}
+    #brand h1{font-size:16px}
+    #brand p{display:none}
+    #mDone{top:5px;padding:6px 12px}
+    .sect{padding:6px 16px 8px}
+    .sect h2{margin:0 0 3px}
+    label{margin:5px 0 2px;font-size:13px}
+    select{padding:7px 10px}
+    input[type=range]{height:28px}
+    #nowSect{padding:5px 16px 2px}
+    #stats{display:grid;grid-template-columns:1fr 1fr;column-gap:16px;font-size:12px}
+    .row{padding:1px 0}
+    #advice{font-size:12px;padding:6px 9px;margin-top:5px;line-height:1.25}
+    #launchWrap{padding:3px 16px 8px}
+    #launch{padding:11px;font-size:18px}
+    #hint{display:none}
+    #board{padding:8px 16px 14px}
+  }
+
   /* ---------- friendly error screen ---------- */
   #oops{position:absolute;inset:0;display:none;place-items:center;background:var(--bg);z-index:99;padding:24px}
   #oops.on{display:grid}
@@ -114,6 +185,7 @@
     <div id="brand">
       <h1>MISSION OF SUCCESS</h1>
       <p>FLY THE JUPI ROCKET</p>
+      <button id="mDone">DONE</button>
     </div>
 
     <div id="scroll">
@@ -187,6 +259,10 @@
     </div>
     <div id="best">BEST TODAY<br><b id="bestAlt">&mdash;</b></div>
     <button id="mute">SOUND ON</button>
+    <div id="mobilebar">
+      <button id="mBuild">BUILD</button>
+      <button id="mLaunch">LAUNCH</button>
+    </div>
   </div>
 </div>
 
@@ -846,6 +922,7 @@ function resize() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 window.addEventListener("resize", resize);
+window.addEventListener("orientationchange", () => setTimeout(resize, 120));
 
 // --- scenery, worked out once ---
 const STARS = [];
@@ -1674,7 +1751,7 @@ function refresh() {
   else if (rocket.svc.prop <= 0) { msg = "<b>Stage 3 has no fuel.</b> The service module is just dead weight &mdash; give it some and watch how much higher Jupi goes!"; tone = "var(--hot2)"; }
   else                     { msg = "Looking good. Hit <b>LAUNCH</b>!"; }
   const a = $("advice"); a.innerHTML = msg; a.style.borderLeftColor = tone;
-  $("launch").disabled = false;
+  $("launch").disabled = false; $("mLaunch").disabled = false;
 }
 // A bare balance number does not predict the outcome on its own, so say the
 // verdict out loud. These cut-offs were measured by flying the rocket, not guessed.
@@ -1698,7 +1775,7 @@ function launch() {
   mode = "flying";
   ffStart = 0;
   $("result").classList.remove("on");
-  $("launch").disabled = true;
+  $("launch").disabled = true; $("mLaunch").disabled = true;
 }
 
 const STATUS = {
@@ -1790,7 +1867,7 @@ function finish() {
   $("bestAlt").textContent = sessionBest ? sessionBest.toLocaleString() + " m" : "—";
   drawBoard(hi);
   $("result").classList.add("on");
-  $("launch").disabled = false;
+  $("launch").disabled = false; $("mLaunch").disabled = false;
 }
 
 /* --------------------------------------------------------------------------
@@ -1921,9 +1998,22 @@ function boot() {
                     "selCapsule", "selCapEng", "rCapFuel", "rThr", "cChute"])
     $(id).addEventListener("input", readPanel);
 
-  $("launch").addEventListener("click", launch);
-  $("again").addEventListener("click", launch);
-  $("tweak").addEventListener("click", () => { $("result").classList.remove("on"); mode = "build"; flight = null; });
+  // --- the drawer, on small screens ---
+  const drawer = $("builder");
+  const openDrawer = (on) => {
+    drawer.classList.toggle("open", on);
+    document.body.classList.toggle("drawer", on);
+  };
+  $("mBuild").addEventListener("click", () => openDrawer(!drawer.classList.contains("open")));
+  $("mDone").addEventListener("click", () => openDrawer(false));
+  $("mLaunch").addEventListener("click", () => { openDrawer(false); launch(); });
+
+  $("launch").addEventListener("click", () => { openDrawer(false); launch(); });
+  $("again").addEventListener("click", () => { openDrawer(false); launch(); });
+  $("tweak").addEventListener("click", () => {
+    $("result").classList.remove("on"); mode = "build"; flight = null;
+    if (getComputedStyle($("mobilebar")).display !== "none") openDrawer(true);
+  });
   $("clear").addEventListener("click", () => {
     if (window.confirm("Clear the Hall of Fame for good?")) { saveBoard([]); drawBoard(-1); }
   });
