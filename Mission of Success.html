@@ -43,6 +43,7 @@
   #pinned{flex:0 0 auto;background:var(--panel);border-top:3px solid var(--line);
           box-shadow:0 -10px 22px #0b102088}
   #nowSect{border-bottom:none;padding-bottom:4px}
+  #easeLabel{margin-top:7px}
   #launchWrap{padding:4px 16px 12px;flex:0 0 auto}
   #launch{width:100%;padding:13px;font:inherit;font-size:21px;font-weight:bold;letter-spacing:2px;
           color:#2a1300;background:linear-gradient(180deg,var(--hot2),var(--hot));
@@ -220,8 +221,6 @@
 
     <div class="sect">
       <h2>Flying</h2>
-      <label>Throttle <span class="val" id="vThr">100%</span></label>
-      <input type="range" id="rThr" min="50" max="100" step="5" value="100">
       <label class="chk"><input type="checkbox" id="cChute" checked> Parachute</label>
     </div>
 
@@ -236,6 +235,8 @@
     <div class="sect" id="nowSect">
       <h2>Jupi right now</h2>
       <div id="stats"></div>
+      <label id="easeLabel">Ease off at Max-Q <span class="val" id="vThr">off</span></label>
+      <input type="range" id="rThr" min="55" max="100" step="5" value="100">
       <div id="advice"></div>
     </div>
     <div id="launchWrap">
@@ -534,7 +535,11 @@ const JUPI = {
     // the bit that comes home
     capsule:       "Standard Jupi",
     // flying
-    throttle:    100,   // percent (solid boosters ignore this - they always go full blast)
+    easeOff:     100,   // THE THROTTLE BUCKET. 100 = never ease off.
+                        //   Set it lower (say 70) and the liquid engines turn themselves
+                        //   down while the air is squeezing hardest, then push back to
+                        //   full once it thins out. Real rockets do this on every launch.
+                        //   The solid boosters ignore it - they cannot be throttled.
     parachute:  true,   // true = float down safely. false = SPECTACULAR CRASH.
     showFace:  false,   // true = Jupi gets cartoon eyes in the window again!
   },
@@ -580,6 +585,8 @@ const Q_LIMIT   = 60000;    // MAX-Q: the hardest squeeze Jupi can survive, in p
                             //   dangerous moment of the whole flight. Go too fast while the
                             //   air is still thick and the rocket is torn apart.
                             //   A normal Jupi peaks near 36 kPa. Real rockets sit at 30-40.
+const Q_EASE_ON  = 0.62;    // ease off once the squeeze passes this share of the limit
+const Q_EASE_OFF = 0.50;    // and push the throttle back up once it falls below this
 const WOBBLY    = 0.05;     // below this steadiness Jupi gets twitchy
 const TUMBLES   = -0.51;    // below this it cannot save itself (measured, not guessed)
 
@@ -677,8 +684,8 @@ function buildRocket(sel) {
   const tank    = byName(JUPI.tanks,          sel.tank);
   const booster = byName(JUPI.boosters,       sel.boosters);
 
-  const area     = sel.boosterSize;
-  const throttle = sel.throttle / 100;
+  const area    = sel.boosterSize;
+  const easeOff = (sel.easeOff == null ? 100 : sel.easeOff) / 100;
 
   // total height, and how wide the widest bit is
   const L    = tank.height + capEng.height + capsule.height;
@@ -703,10 +710,10 @@ function buildRocket(sel) {
   };
   // STAGE 2 - the core
   const core = { dry: tank.dryMass + engine.mass, prop: Math.min(sel.fuel, tank.maxFuel),
-                 thrust: engine.thrust * throttle, rate: engine.burnRate * throttle };
+                 thrust: engine.thrust, rate: engine.burnRate };
   // STAGE 3 - the service module (engine + the hull that holds it and the fuel)
   const svc  = { dry: capEng.mass + capEng.hull, prop: sel.capsuleFuel,
-                 thrust: capEng.thrust * throttle, rate: capEng.burnRate * throttle };
+                 thrust: capEng.thrust, rate: capEng.burnRate };
   // THE JUPI MODULE - no engine, no fuel, just the bit that comes home
   const pod  = { dry: capsule.mass };
 
@@ -716,7 +723,7 @@ function buildRocket(sel) {
   const boosterH = tank.height * (0.50 + 0.42 * Math.min(area, 1.4) / 1.4);
 
   return {
-    capsule, capEng, engine, tank, booster, boosterArea: area, throttle,
+    capsule, capEng, engine, tank, booster, boosterArea: area, easeOff,
     chute: !!sel.parachute, L, wide, A, pos, srb, core, svc, pod,
     bw, boosterH, span: wide / 2 + 2 * bw + wide * 0.06,
     cnNose: CN_NOSE * A, noseC: L - 0.4,
@@ -774,6 +781,7 @@ function newFlight(r) {
     onRail: true, lifted: false, chuteOut: false, tumbled: false,
     alive: true, outcome: null, landSpeed: 0, padTime: 0,
     shake: 0, aoa: 0, throttleNow: 0, srbFire: 0, coreFire: 0, svcFire: 0, maxQ: 0, qNow: 0,
+    easing: false, easedFor: 0,
     events: [], jetsam: [],
   };
 }
@@ -809,20 +817,33 @@ function stepFlight(f) {
   const mb = massBalance(r, f);
   const m = mb.m, c = mb.com;
 
-  // --- who is burning? Solids cannot be throttled or switched off. ---
+  // --- THE THROTTLE BUCKET ---
+  // This is what real rockets do. The air squeezes hardest partway up, so the
+  // liquid engines ease off through that moment and push back to full once the
+  // air thins out. It is the reason for the famous call "Go at throttle up" -
+  // that is mission control saying the worst is over. Solid boosters cannot do
+  // this: once they are lit they are lit.
+  if (r.easeOff < 1 && f.lifted) {
+    if (!f.easing && f.qNow > Q_LIMIT * Q_EASE_ON) f.easing = true;
+    else if (f.easing && f.qNow < Q_LIMIT * Q_EASE_OFF) f.easing = false;
+  } else f.easing = false;
+  const lq = f.easing ? r.easeOff : 1;      // how far the liquids are turned down
+  if (f.easing) f.easedFor += DT;
+
+  // --- who is burning? ---
   let T = 0;
   f.srbFire = f.coreFire = f.svcFire = 0;
   if (f.srbOn && f.srbProp > 0) {
-    T += r.srb.thrust; f.srbFire = 1;
+    T += r.srb.thrust; f.srbFire = 1;        // solids always go full blast
     f.srbProp = Math.max(0, f.srbProp - r.srb.rate * DT);
   }
   if (f.coreOn && f.coreProp > 0 && r.core.rate > 0) {
-    T += r.core.thrust; f.coreFire = r.throttle;
-    f.coreProp = Math.max(0, f.coreProp - r.core.rate * DT);
+    T += r.core.thrust * lq; f.coreFire = lq;
+    f.coreProp = Math.max(0, f.coreProp - r.core.rate * lq * DT);
   }
   if (f.svcOn && f.svcLit && f.svcProp > 0 && r.svc.rate > 0) {
-    T += r.svc.thrust; f.svcFire = r.throttle;
-    f.svcProp = Math.max(0, f.svcProp - r.svc.rate * DT);
+    T += r.svc.thrust * lq; f.svcFire = lq;
+    f.svcProp = Math.max(0, f.svcProp - r.svc.rate * lq * DT);
   }
   f.throttleNow = Math.max(f.srbFire, f.coreFire, f.svcFire);
 
@@ -1050,6 +1071,7 @@ function statusOf(f) {
   if (f.tumbled)                return "tumble";
   if (f.chuteOut)               return "chute";
   if (f.alive && f.lifted && f.qNow > Q_LIMIT * 0.78) return "maxq";
+  if (f.alive && f.easing) return "easing";
   if (!f.lifted)                return f.padTime > 0.2 ? "stuck" : "pad";
   if (f.srbFire > 0)            return "srb";
   if (f.coreFire > 0)           return "core";
@@ -1744,7 +1766,7 @@ function readPanel() {
   sel.capsule       = $("selCapsule").value;
   sel.capsuleEngine = $("selCapEng").value;
   sel.capsuleFuel   = +$("rCapFuel").value;
-  sel.throttle      = +$("rThr").value;
+  sel.easeOff       = +$("rThr").value;
   sel.parachute     = $("cChute").checked;
   syncFuelSlider();
   refresh();
@@ -1767,7 +1789,7 @@ function refresh() {
   $("vFuel").textContent    = Math.round(rocket.core.prop) + " kg";
   $("vCapFuel").textContent = Math.round(rocket.svc.prop) + " kg";
   $("vBoost").textContent   = sel.boosterSize.toFixed(2) + " m2";
-  $("vThr").textContent     = sel.throttle + "%";
+  $("vThr").textContent     = sel.easeOff >= 100 ? "off" : "down to " + sel.easeOff + "%";
 
   const cls = (v, okv, warnv) => v >= okv ? "good" : v >= warnv ? "warn" : "bad";
   $("stats").innerHTML =
@@ -1786,7 +1808,7 @@ function refresh() {
   if (dryTwr < 1)          { msg = "<b>WAY too heavy!</b> Even with every tank empty this could not lift off."; tone = "var(--bad)"; }
   else if (twr < 1)        { msg = "<b>TOO HEAVY to lift off!</b> Jupi will sit there burning fuel until it is light enough to move. Use less fuel, or bigger boosters."; tone = "var(--bad)"; }
   else if (marg < TUMBLES) { msg = "<b>Boosters too small!</b> Jupi will tumble like a thrown stick. Make them bigger."; tone = "var(--bad)"; }
-  else if (qPeak >= Q_LIMIT) { msg = "<b>Too fast, too low!</b> The air will tear Jupi apart before it climbs out of the thick atmosphere. Carry less core fuel, or use a thriftier engine."; tone = "var(--bad)"; }
+  else if (qPeak >= Q_LIMIT) { msg = "<b>Too fast, too low!</b> The air will tear Jupi apart. Try <b>easing off at Max-Q</b> &mdash; that is exactly what real rockets do &mdash; or carry less core fuel."; tone = "var(--bad)"; }
   else if (qPeak >= Q_LIMIT * 0.8) { msg = "Jupi is pushing hard through the thick air. A little more and it would break up."; tone = "var(--hot2)"; }
   else if (twr < 1.4)      { msg = "Jupi will crawl off the pad &mdash; and a slow rocket gets shoved sideways by the wind."; tone = "var(--hot2)"; }
   else if (marg < WOBBLY)  { msg = "Boosters are on the small side. Jupi will wobble before it settles."; tone = "var(--hot2)"; }
@@ -1832,6 +1854,7 @@ const STATUS = {
   svc:     ["STAGE 3 - SERVICE MODULE","#4cc9f0"],
   pod:     ["JUPI MODULE ALONE",     "#39d98a"],
   maxq:    ["AIR STRESS HIGH!",      "#ff5d6c"],
+  easing:  ["EASING OFF - MAX-Q",    "#ffc24a"],
   brokeup: ["TORN APART",            "#ff5d6c"],
   thrust:  ["ENGINE BURNING",        "#ff9a3f"],
   coast:   ["COASTING UP",           "#eef3ff"],
@@ -2029,7 +2052,7 @@ function boot() {
           tank: s.tank, engine: s.engine, fuel: s.fuel,
           capsule: s.capsule, capsuleEngine: s.capsuleEngine,
           capsuleFuel: s.capsuleFuel == null ? 0 : s.capsuleFuel,
-          throttle: s.throttle == null ? 100 : s.throttle,
+          easeOff: s.easeOff == null ? 100 : s.easeOff,
           parachute: s.parachute !== false };
 
   fillSelect($("selBoost"),   JUPI.boosters,       sel.boosters);
@@ -2039,7 +2062,7 @@ function boot() {
   fillSelect($("selCapEng"),  JUPI.capsuleEngines, sel.capsuleEngine);
   $("rBoost").value   = sel.boosterSize;
   $("rCapFuel").value = sel.capsuleFuel;
-  $("rThr").value = sel.throttle;
+  $("rThr").value = sel.easeOff;
   $("cChute").checked = sel.parachute;
   syncFuelSlider();
   $("rFuel").value = Math.min(sel.fuel, +$("rFuel").max);
