@@ -3,6 +3,8 @@
 A rocket simulator built with kids, for kids. Design a rocket called **Jupi**, launch it,
 watch what happens, then go back and tweak it.
 
+**[Play it in your browser](https://thill-03.github.io/MissionofSuccess/)** &mdash; nothing to install.
+
 **It is one self-contained HTML file.** Download `Mission of Success.html`, double-click it,
 and it runs. No install, no build step, no internet connection, no dependencies. It works on
 any laptop or Chromebook you can put it on, which was the whole point — a friend can take it
