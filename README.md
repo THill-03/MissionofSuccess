@@ -40,6 +40,11 @@ That is the point of the whole thing. Nothing is faked to feel good:
   because speed drives it up while the thinning air drags it down. Push too fast while the air
   is still thick and Jupi is torn apart. A normal flight peaks near 36 kPa, which is about where
   real rockets sit. The panel predicts it before you launch by flying the climb in the background.
+- **The throttle bucket.** Set *Ease off at Max-Q* and the liquid engines turn themselves down
+  while the air is squeezing hardest, then push back to full once it thins out. That is what real
+  rockets do on every launch, and it is where the call *Go at throttle up* comes from - mission
+  control saying the worst is over. It costs almost nothing and it saves rockets that would
+  otherwise be torn apart. The solid boosters ignore it: once they are lit, they cannot be turned down.
 - **The exhaust plume** shows shock diamonds down in thick air and blooms outward as the air thins,
   driven by the same air-density value the drag model uses.
 - **Solid boosters cannot be throttled.** Once they are lit, they are lit.
