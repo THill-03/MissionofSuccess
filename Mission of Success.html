@@ -573,6 +573,13 @@ const CHUTE_CDA = 50;       // how much the parachute grabs the air
 const TUMBLE_AOA = 1.22;    // sideways by more than 70 degrees = tumbling
 const TUMBLE_SPIN = 3.0;    // or spinning faster than this
 const SAFE_LANDING = 12;    // land slower than this (m/s) and Jupi is fine
+const Q_LIMIT   = 60000;    // MAX-Q: the hardest squeeze Jupi can survive, in pascals.
+                            //   Dynamic pressure is half x air density x speed squared.
+                            //   It PEAKS partway up, because speed pushes it up while the
+                            //   thinning air pulls it down - and that peak is the most
+                            //   dangerous moment of the whole flight. Go too fast while the
+                            //   air is still thick and the rocket is torn apart.
+                            //   A normal Jupi peaks near 36 kPa. Real rockets sit at 30-40.
 const WOBBLY    = 0.05;     // below this steadiness Jupi gets twitchy
 const TUMBLES   = -0.51;    // below this it cannot save itself (measured, not guessed)
 
@@ -742,6 +749,19 @@ function atLiftoff(r) {
            srbProp: r.srb.prop, coreProp: r.core.prop, svcProp: r.svc.prop };
 }
 
+/* Fly the whole boost phase in the background, without drawing anything, just
+   to find out how hard the air will squeeze. That way the panel can warn you
+   BEFORE you launch instead of surprising you halfway up. */
+function predictMaxQ(r) {
+  const f = newFlight(r);
+  let guard = 0;
+  while (f.alive && guard++ < 120 * 90) {
+    stepFlight(f);
+    if (f.srbProp <= 0 && f.coreProp <= 0 && f.svcProp <= 0) break;
+  }
+  return f.maxQ;
+}
+
 /* --------------------------------------------------------------------------
    THE FLIGHT
    -------------------------------------------------------------------------- */
@@ -753,7 +773,7 @@ function newFlight(r) {
     apogee: 0, maxV: 0, maxAoA: 0,
     onRail: true, lifted: false, chuteOut: false, tumbled: false,
     alive: true, outcome: null, landSpeed: 0, padTime: 0,
-    shake: 0, aoa: 0, throttleNow: 0, srbFire: 0, coreFire: 0, svcFire: 0,
+    shake: 0, aoa: 0, throttleNow: 0, srbFire: 0, coreFire: 0, svcFire: 0, maxQ: 0, qNow: 0,
     events: [], jetsam: [],
   };
 }
@@ -828,6 +848,20 @@ function stepFlight(f) {
             + (f.chuteOut ? CHUTE_CDA : 0);
   const wind = (f.y > 2) ? W.wind : 0;
   const rvx = f.vx - wind, rvy = f.vy, rv = Math.hypot(rvx, rvy);
+  // DYNAMIC PRESSURE - how hard the air is squeezing Jupi right now.
+  // It peaks partway up: speed pushes it up, thinning air pulls it down.
+  f.qNow = 0.5 * rho * rv * rv;
+  if (f.qNow > f.maxQ) f.maxQ = f.qNow;
+  // torn apart by the air. Nothing exploded - the airframe simply could not
+  // take the squeeze, which is why real rockets ease off through this moment.
+  if (f.qNow > Q_LIMIT && f.lifted && !f.chuteOut) {
+    if (f.srbOn) { f.srbOn = false; jettison(f, "srb"); }
+    if (f.coreOn) { f.coreOn = false; jettison(f, "core"); }
+    if (f.svcOn) { f.svcOn = false; jettison(f, "svc"); }
+    say(f, "TORN APART BY THE AIR!");
+    f.alive = false; f.outcome = "brokeup"; f.landSpeed = rv;
+    return;
+  }
   if (rv > 0.01 && rho > 0) {
     const D = 0.5 * rho * rv * rv * CdA;
     fx -= D * rvx / rv; fy -= D * rvy / rv;
@@ -1011,9 +1045,11 @@ function statusOf(f) {
   if (!f) return "pad";
   if (f.outcome === "landed")   return "landed";
   if (f.outcome === "crashed")  return "crashed";
+  if (f.outcome === "brokeup")  return "brokeup";
   if (f.outcome === "tooheavy") return "stuck";
   if (f.tumbled)                return "tumble";
   if (f.chuteOut)               return "chute";
+  if (f.alive && f.lifted && f.qNow > Q_LIMIT * 0.78) return "maxq";
   if (!f.lifted)                return f.padTime > 0.2 ? "stuck" : "pad";
   if (f.srbFire > 0)            return "srb";
   if (f.coreFire > 0)           return "core";
@@ -1562,7 +1598,8 @@ function render(r, f, t) {
   drawJetsam(r, f, z, toScrX, toScrY);
 
   // ---- Jupi ----
-  if (!f || f.outcome !== "crashed" || f.t < 0.01) {
+  const wrecked = f && (f.outcome === "crashed" || f.outcome === "brokeup");
+  if (!wrecked || f.t < 0.01) {
     const sx = toScrX(f ? f.x : 0), sy = toScrY(f ? f.y : 0);
     if (f && f.chuteOut)
       drawChute(toScrX(f.x + r.L * Math.sin(f.th)), toScrY(f.y + r.L * Math.cos(f.th)), z);
@@ -1725,6 +1762,7 @@ function refresh() {
   const tS = rocket.srb.rate  > 0 ? rocket.srb.prop  / rocket.srb.rate  : 0;
   const tC = rocket.core.rate > 0 ? rocket.core.prop / rocket.core.rate : 0;
   const tU = rocket.svc.rate  > 0 ? rocket.svc.prop  / rocket.svc.rate  : 0;
+  const qPeak = predictMaxQ(rocket);
 
   $("vFuel").textContent    = Math.round(rocket.core.prop) + " kg";
   $("vCapFuel").textContent = Math.round(rocket.svc.prop) + " kg";
@@ -1738,7 +1776,9 @@ function refresh() {
     row("Lift power", twr.toFixed(2) + " x", cls(twr, 1.5, 1.0)) +
     row("Burns 1+2+3", tS.toFixed(0) + "s + " + tC.toFixed(0) + "s + " + tU.toFixed(0) + "s") +
     row("Steadiness", steadyWord(marg) + " (" + marg.toFixed(2) + " m)",
-        marg > WOBBLY ? "good" : marg > TUMBLES ? "warn" : "bad");
+        marg > WOBBLY ? "good" : marg > TUMBLES ? "warn" : "bad") +
+    row("Air stress", stressWord(qPeak) + " (" + Math.round(qPeak / 1000) + " kPa)",
+        qPeak < Q_LIMIT * 0.8 ? "good" : qPeak < Q_LIMIT ? "warn" : "bad");
 
   const allDry = rocket.srb.dry + rocket.core.dry + rocket.svc.dry + rocket.pod.dry;
   const dryTwr = push / (allDry * g);
@@ -1746,6 +1786,8 @@ function refresh() {
   if (dryTwr < 1)          { msg = "<b>WAY too heavy!</b> Even with every tank empty this could not lift off."; tone = "var(--bad)"; }
   else if (twr < 1)        { msg = "<b>TOO HEAVY to lift off!</b> Jupi will sit there burning fuel until it is light enough to move. Use less fuel, or bigger boosters."; tone = "var(--bad)"; }
   else if (marg < TUMBLES) { msg = "<b>Boosters too small!</b> Jupi will tumble like a thrown stick. Make them bigger."; tone = "var(--bad)"; }
+  else if (qPeak >= Q_LIMIT) { msg = "<b>Too fast, too low!</b> The air will tear Jupi apart before it climbs out of the thick atmosphere. Carry less core fuel, or use a thriftier engine."; tone = "var(--bad)"; }
+  else if (qPeak >= Q_LIMIT * 0.8) { msg = "Jupi is pushing hard through the thick air. A little more and it would break up."; tone = "var(--hot2)"; }
   else if (twr < 1.4)      { msg = "Jupi will crawl off the pad &mdash; and a slow rocket gets shoved sideways by the wind."; tone = "var(--hot2)"; }
   else if (marg < WOBBLY)  { msg = "Boosters are on the small side. Jupi will wobble before it settles."; tone = "var(--hot2)"; }
   else if (rocket.svc.prop <= 0) { msg = "<b>Stage 3 has no fuel.</b> The service module is just dead weight &mdash; give it some and watch how much higher Jupi goes!"; tone = "var(--hot2)"; }
@@ -1755,6 +1797,10 @@ function refresh() {
 }
 // A bare balance number does not predict the outcome on its own, so say the
 // verdict out loud. These cut-offs were measured by flying the rocket, not guessed.
+// How hard the air will squeeze at the worst moment of the climb.
+function stressWord(q) {
+  return q >= Q_LIMIT ? "WILL BREAK UP" : q >= Q_LIMIT * 0.8 ? "very high" : "fine";
+}
 function steadyWord(m) {
   return m > WOBBLY ? "rock steady" : m > TUMBLES ? "wobbly" : "WILL TUMBLE";
 }
@@ -1785,6 +1831,8 @@ const STATUS = {
   core:    ["STAGE 2 - CORE BURN",   "#ff9a3f"],
   svc:     ["STAGE 3 - SERVICE MODULE","#4cc9f0"],
   pod:     ["JUPI MODULE ALONE",     "#39d98a"],
+  maxq:    ["AIR STRESS HIGH!",      "#ff5d6c"],
+  brokeup: ["TORN APART",            "#ff5d6c"],
   thrust:  ["ENGINE BURNING",        "#ff9a3f"],
   coast:   ["COASTING UP",           "#eef3ff"],
   falling: ["FALLING",               "#ffc24a"],
@@ -1812,7 +1860,7 @@ function finish() {
   const f = flight;
   const alt = Math.round(f.apogee);
 
-  if (f.outcome === "crashed" || f.outcome === "tumbled") {
+  if (f.outcome === "crashed" || f.outcome === "tumbled" || f.outcome === "brokeup") {
     Sound.bang();
     for (let i = 0; i < 64; i++) {
       const a = Math.random() * 6.2832, s = 2 + Math.random() * 11;
@@ -1834,6 +1882,7 @@ function finish() {
     landed:   "Perfect landing! The parachute did its job.",
     crashed:  "SMASH! Jupi hit the ground at " + Math.round(f.landSpeed) + " m/s.",
     tumbled:  "Jupi tumbled! It went sideways and never came back.",
+    brokeup:  "TORN APART! The air ripped Jupi to pieces at " + Math.round(f.maxQ / 1000) + " kPa.",
     tooheavy: "Jupi was too heavy and never left the pad.",
   }[f.outcome] || "Jupi came back down.";
 
@@ -1842,6 +1891,7 @@ function finish() {
       ? "Stage 3 never fired &mdash; it had no fuel. Give the service module some and see what happens."
     : {
     tumbled:  "Bigger boosters would hold it straight.",
+    brokeup:  "Too fast while the air was still thick. Less core fuel, or a thriftier engine.",
     tooheavy: "Try less fuel, or bigger boosters.",
     crashed:  sel.parachute ? "The chute only works if Jupi is still pointing the right way." : "Switch the parachute on for a soft landing.",
     landed:   "Now try to beat it. Which stage would you give more fuel?",

@@ -36,6 +36,10 @@ That is the point of the whole thing. Nothing is faked to feel good:
   booster and Jupi tumbles like a thrown stick — and the panel tells you *before* you launch, using
   thresholds that were measured by flying it, not guessed.
 - **Wind** pushes slow rockets around far more than fast ones.
+- **Max-Q.** Dynamic pressure - the squeeze the air puts on the rocket - peaks partway up,
+  because speed drives it up while the thinning air drags it down. Push too fast while the air
+  is still thick and Jupi is torn apart. A normal flight peaks near 36 kPa, which is about where
+  real rockets sit. The panel predicts it before you launch by flying the climb in the background.
 - **The exhaust plume** shows shock diamonds down in thick air and blooms outward as the air thins,
   driven by the same air-density value the drag model uses.
 - **Solid boosters cannot be throttled.** Once they are lit, they are lit.
