@@ -25,6 +25,17 @@ Jupi is four pieces, and it throws three of them away on the way up:
 | 3 | The service module | Lights once the core falls away, then is dropped itself |
 | — | **The Jupi module** | Rides all the way up and parachutes home. The only piece that survives |
 
+Jupi launches from a Kennedy Space Center pad: the Vehicle Assembly Building and the
+crawler-transporter on the horizon, lightning towers, the water tower, palm trees, the ocean,
+an alligator sunning itself on the grass, and a crowd behind the fence. Press LAUNCH and the
+countdown clock runs down from five: the crowd cheers, then covers its ears, and the deluge
+water turns to steam under the pad at liftoff. Press LAUNCH again to skip the countdown.
+On the way up Jupi passes pelicans, a plane towing a *GO JUPI GO!* banner, a weather balloon,
+and the Moon coming out as the sky goes dark.
+
+After every flight the result card shows **how much higher or lower than last time, and what
+you changed**, plus a graph of the climb coloured by which stage was burning.
+
 ## The physics is real
 
 That is the point of the whole thing. Nothing is faked to feel good:
@@ -52,7 +63,9 @@ That is the point of the whole thing. Nothing is faked to feel good:
 - **Max-Q.** Dynamic pressure - the squeeze the air puts on the rocket - peaks partway up,
   because speed drives it up while the thinning air drags it down. Push too fast while the air
   is still thick and Jupi is torn apart. A normal flight peaks near 36 kPa, which is about where
-  real rockets sit. The panel predicts it before you launch by flying the climb in the background.
+  real rockets sit. The panel predicts it before you launch by flying the climb in the background,
+  and it only suggests a fix (easing off, or less core fuel) after flying that fix and seeing it
+  work. When the boosters alone are doing the damage, it says so, because nothing else will help.
 - **The throttle bucket.** Set *Ease off at Max-Q* and the liquid engines turn themselves down
   while the air is squeezing hardest, then push back to full once it thins out. That is what real
   rockets do on every launch, and it is where the call *Go at throttle up* comes from - mission
@@ -83,7 +96,17 @@ change you make is a fair test.
 
 ## Making it your own
 
-Open the file in Notepad (or any text editor). The first thing you see is a big banner that
+**The Booster Workshop** is the easy way. Press *Make your own booster* under the booster size
+slider: name it, set how hard it pushes (from a puff to a ridiculous two million), how long it
+burns, how much fuel and how heavy, and pick a colour. It shows the same warnings as the panel
+for the rocket you have now — but never how high it will go. To find that out, you launch it.
+Homemade boosters are saved in this browser. *See your booster as code* gives you the lines to
+paste into the file to make one permanent.
+
+Try **Kaboom Juice**. At normal size the air tears Jupi apart a couple of seconds after launch.
+Is there a size where it doesn't?
+
+The other way is the real code. Open the file in Notepad (or any text editor). The first thing you see is a big banner that
 says **KIDS EDIT THIS**, and everything above the STOP sign is fair game — engines, fuel tanks,
 boosters, gravity, wind. Every number has a plain-English comment next to it.
 
@@ -95,12 +118,40 @@ boosters, gravity, wind. Every number has a plain-English comment next to it.
   color:   "#ff7a2f" },
 ```
 
-Set `gravity: 1.62` and `airThickness: 0` for the Moon.
+Set `gravity: 1.62` and `airThickness: 0` for the Moon (the birds, plane and balloon stay home —
+there is no air for them). Set `countdown: 0` to launch the instant you press the button.
 
 If you mistype something, Jupi tells you exactly what to fix in plain English instead of showing
 a blank white page. Nothing you type in there can break your computer.
 
-## Scores
+## Sharing rockets
 
-High scores are saved in your own browser and never leave your machine. There is no server,
-no account and nothing to sign up for.
+Every rocket has a code, shown under *Share your rocket*, like `JUPI-0F00-0M00-909Y-L9`. Type a
+friend's code into the box and press LOAD to fly their exact rocket. If it uses a homemade
+booster, the code carries the booster too, so it arrives with them. A mistyped code is caught
+rather than quietly loading the wrong rocket.
+
+## What gets saved
+
+Everything is saved in your own browser and never leaves your machine: the Hall of Fame, the
+pilot's name, the rocket you are building, and homemade boosters. There is no server, no account
+and nothing to sign up for. That also means a different computer or browser starts fresh, and
+**share codes are how a rocket travels**.
+
+- Tap a Hall of Fame entry to load that rocket and fly it again.
+- Taking turns on one tablet? Press *change* next to the pilot's name.
+- If you edit `startingRocket` in the file, your edit wins over the rocket saved in the browser.
+
+## Tests
+
+For grown-ups changing the code:
+
+```
+node tests/run.js
+```
+
+Nothing to install. The physics checks run the flight engine straight out of the HTML file in
+Node — including flying thousands of rockets to prove every *will break up* and *will snap*
+warning matches what really happens. The browser checks open the real page in headless Chrome or
+Edge and click through the countdown, the scenery, saved designs, share codes and the Booster
+Workshop. Run it after every change.

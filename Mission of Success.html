@@ -2411,7 +2411,13 @@ function dec(str) {
   for (const c of str) { const v = B36.indexOf(c); if (v < 0) return NaN; n = n * 36 + v; }
   return n;
 }
-const checkChar = str => B36[[...str].reduce((a, c, i) => (a + (B36.indexOf(c) + 1) * (i + 7)) % 36, 0)];
+// The check character (ISO 7064 MOD 37,36): catches every single wrong
+// character and every pair of neighbours typed the wrong way round.
+function checkChar(str) {
+  let p = 36;
+  for (const c of str) { const s = (p + Math.max(0, B36.indexOf(c))) % 36 || 36; p = (s * 2) % 37; }
+  return B36[(37 - p) % 36];
+}
 const LISTS = ["boosters", "tanks", "engines", "capsuleEngines", "capsules"];
 const fileParts = list => JUPI[list].filter(p => !p.custom);
 function partsPrint() {
