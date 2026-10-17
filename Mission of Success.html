@@ -368,6 +368,15 @@ const JUPI = {
       burnTime:     4,    // and it is over in a blink
       color:   "#ff5d6c" },
 
+    { name: "Kaboom Juice",
+      heaviness:   18,
+      propellant: 130,
+      thrust:  150000,    // WAY too much shove. Do not drink.
+      burnTime:     2,    // two seconds of pure chaos
+      color:   "#ffb020" },   // warning-sign orange
+    // At normal size the air tears Jupi apart before it gets very high.
+    // But is there a booster size where it does NOT go kaboom...?
+
     // ADD YOUR OWN!
   ],
 
@@ -1897,7 +1906,20 @@ function refresh() {
     tone = "var(--bad)";
   }
   else if (marg < TUMBLES) { msg = "<b>Boosters too small!</b> Jupi will tumble like a thrown stick. Make them bigger."; tone = "var(--bad)"; }
-  else if (qPeak >= Q_LIMIT) { msg = "<b>Too fast, too low!</b> The air will tear Jupi apart. Try <b>easing off at Max-Q</b> &mdash; that is exactly what real rockets do &mdash; or carry less core fuel."; tone = "var(--bad)"; }
+  else if (qPeak >= Q_LIMIT) {
+    // Only suggest a fix if flying it shows the fix actually works. When the
+    // boosters alone are doing the damage, neither one helps - solids cannot
+    // be turned down.
+    const saves = change => predictLoads(buildRocket(Object.assign({}, sel, change))).q < Q_LIMIT;
+    const easeHelps = saves({ easeOff: +$("rThr").min });
+    const fuelHelps = [0.75, 0.5, 0.25, 0].some(k => saves({ fuel: Math.floor(sel.fuel * k) }));
+    msg = "<b>Too fast, too low!</b> The air will tear Jupi apart. " + (
+      easeHelps && fuelHelps ? "Try <b>easing off at Max-Q</b> &mdash; that is exactly what real rockets do &mdash; or carry less core fuel." :
+      easeHelps ? "Try <b>easing off at Max-Q</b> &mdash; that is exactly what real rockets do." :
+      fuelHelps ? "Try carrying <b>less core fuel</b>." :
+      "The <b>boosters</b> are shoving so hard that easing off will not save it &mdash; once solid boosters are lit, they cannot be turned down.");
+    tone = "var(--bad)";
+  }
   else if (qPeak >= Q_LIMIT * 0.8) { msg = "Jupi is pushing hard through the thick air. A little more and it would break up."; tone = "var(--hot2)"; }
   else if (qaPeak >= QA_LIMIT * 0.8) { msg = "The wind is bending Jupi as it climbs. A little more and it would snap."; tone = "var(--hot2)"; }
   else if (twr < 1.4)      { msg = "Jupi will crawl off the pad &mdash; and a slow rocket gets shoved sideways by the wind."; tone = "var(--hot2)"; }
