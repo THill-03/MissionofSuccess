@@ -105,6 +105,47 @@
   #clear, #pilotChange{background:none;border:none;color:#54618c;font:inherit;font-size:11px;cursor:pointer;
          text-decoration:underline;margin-top:7px;padding:0}
 
+  /* ---------- share codes ---------- */
+  #myCode{font:bold 15px "Courier New",monospace;letter-spacing:1px;background:#0b1020;
+          border:2px dashed var(--line);border-radius:8px;padding:6px 8px;text-align:center;
+          user-select:all;-webkit-user-select:all;color:var(--hot2);word-break:break-all}
+  .codeRow{display:flex;gap:6px;margin-top:2px}
+  .codeRow input{flex:1;min-width:0;padding:5px 8px;border-radius:8px;border:2px solid var(--line);
+                 background:var(--panel2);color:var(--ink);font:bold 14px "Courier New",monospace;text-transform:uppercase}
+  .small{padding:5px 10px;border-radius:8px;border:2px solid var(--line);background:var(--panel2);
+         color:var(--ink);font:inherit;font-size:13px;font-weight:bold;letter-spacing:.5px;cursor:pointer}
+  .small:hover{border-color:var(--hot)}
+  #codeMsg{font-size:12px;color:var(--dim);margin-top:4px;min-height:16px}
+  #makeBoost{width:100%;margin-top:6px}
+
+  /* ---------- flight graph ---------- */
+  #graph{display:block;width:100%;height:130px;margin:10px 0 3px;background:#0b1020;border-radius:10px}
+  #graphKey{font-size:11px;color:var(--dim);display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  #graphKey i{display:inline-block;width:12px;height:4px;border-radius:2px;margin-right:4px;vertical-align:middle}
+
+  /* ---------- booster workshop ---------- */
+  #shop{position:fixed;inset:0;display:none;place-items:center;background:#040814cc;z-index:40;padding:12px}
+  #shop.on{display:grid}
+  #shopCard{background:var(--panel);border:4px solid var(--hot2);border-radius:20px;padding:16px 22px;
+            width:min(440px,100%);max-height:100%;overflow-y:auto;box-shadow:0 18px 60px #000b}
+  #shopCard h2{margin:0 0 2px;font-size:18px;letter-spacing:1.5px;color:var(--hot2)}
+  #shopCard input[type=text]{width:100%;padding:6px 9px;border-radius:8px;border:2px solid var(--line);
+            background:var(--panel2);color:var(--ink);font:inherit;font-size:16px}
+  .swatches{display:flex;gap:7px;flex-wrap:wrap;margin-top:3px}
+  .swatches button{width:28px;height:28px;border-radius:50%;border:3px solid transparent;cursor:pointer;padding:0}
+  .swatches button.on{border-color:var(--ink)}
+  #shopStats{font-size:13px;margin-top:8px}
+  #shopMsg{font-size:13px;margin-top:6px;min-height:18px}
+  #shopBtns{display:flex;gap:8px;margin-top:8px}
+  #shopBtns button{flex:1;padding:11px 6px;font:inherit;font-size:15px;font-weight:bold;border-radius:11px;
+            cursor:pointer;background:var(--panel2);color:var(--ink);border:2px solid var(--line)}
+  #shopBtns button.go{background:linear-gradient(180deg,var(--hot2),var(--hot));color:#2a1300;border:none}
+  #shopBtns button.del{color:var(--bad)}
+  #shopCard details{margin-top:9px;font-size:12px;color:var(--dim)}
+  #shopCard summary{cursor:pointer}
+  #shopCode{font:12px/1.35 "Courier New",monospace;background:#0b1020;border-radius:8px;padding:8px;
+            white-space:pre;overflow-x:auto;color:#cfd8ee;margin-top:4px;user-select:all;-webkit-user-select:all}
+
   /* ---------- phones and small screens ----------
      The builder becomes a slide-up drawer so the flight gets the whole screen.
      Two thumb-sized buttons sit over the canvas: BUILD opens the drawer,
@@ -150,6 +191,9 @@
     #card{padding:22px 20px;min-width:0;width:min(92vw,380px)}
     #score{font-size:44px}
     #cardBtns button{padding:15px 8px}
+    .codeRow input{font-size:16px;padding:10px}
+    .small{padding:10px 12px}
+    #shopBtns button{padding:14px 6px}
   }
 
   /* On a phone held sideways there is barely any height, so the drawer takes
@@ -203,6 +247,7 @@
       <select id="selBoost"></select>
       <label>Booster size <span class="val" id="vBoost">0.75</span></label>
       <input type="range" id="rBoost" min="0.05" max="1.50" step="0.05" value="0.75">
+      <button id="makeBoost" class="small">MAKE YOUR OWN BOOSTER</button>
     </div>
 
     <div class="sect">
@@ -229,6 +274,15 @@
       <h2>Flying</h2>
       <label class="chk"><input type="checkbox" id="cChute" checked> Parachute</label>
     </div>
+
+      <div class="sect" id="shareSect">
+        <h2>Share your rocket</h2>
+        <label>Your rocket's code</label>
+        <div id="myCode"></div>
+        <label>Got a code from a friend?</label>
+        <div class="codeRow"><input id="codeIn" placeholder="JUPI-..." autocomplete="off" autocapitalize="characters" spellcheck="false"><button id="codeGo" class="small">LOAD</button></div>
+        <div id="codeMsg"></div>
+      </div>
 
       <div id="board">
         <h3>Hall of Fame</h3>
@@ -281,11 +335,44 @@
     <div id="score">0 m</div>
     <div id="delta"></div>
     <div id="why"></div>
+    <canvas id="graph"></canvas>
+    <div id="graphKey"></div>
     <div id="record"></div>
     <div id="cardBtns">
       <button id="again" class="go">LAUNCH AGAIN</button>
       <button id="tweak">TWEAK JUPI</button>
     </div>
+  </div>
+</div>
+
+<div id="shop">
+  <div id="shopCard">
+    <h2 id="shopTitle">MAKE YOUR OWN BOOSTER</h2>
+    <label>Name</label>
+    <input type="text" id="bName" maxlength="20" placeholder="Sneeze Boosters" autocomplete="off">
+    <label>Push <span class="val" id="vbThrust"></span></label>
+    <input type="range" id="bThrust" min="0" max="100" step="1">
+    <label>How long it burns <span class="val" id="vbBurn"></span></label>
+    <input type="range" id="bBurn" min="0.5" max="30" step="0.5">
+    <label>Fuel packed in <span class="val" id="vbProp"></span></label>
+    <input type="range" id="bProp" min="20" max="300" step="5">
+    <label>How heavy the casing is <span class="val" id="vbHeavy"></span></label>
+    <input type="range" id="bHeavy" min="5" max="100" step="1">
+    <label>Colour</label>
+    <div class="swatches" id="bColors"></div>
+    <div id="shopStats"></div>
+    <div id="shopMsg"></div>
+    <div id="shopBtns">
+      <button id="bCancel">CANCEL</button>
+      <button id="bDelete" class="del">DELETE</button>
+      <button id="bSave" class="go">SAVE</button>
+    </div>
+    <details>
+      <summary>See your booster as code</summary>
+      <p>Your booster is saved in this browser. To put it in the game for good, ask a
+      grown-up to paste this into the boosters list under <b>KIDS EDIT THIS</b>.</p>
+      <div id="shopCode"></div>
+    </details>
   </div>
 </div>
 
@@ -858,7 +945,7 @@ function newFlight(r) {
     shake: 0, aoa: 0, throttleNow: 0, srbFire: 0, coreFire: 0, svcFire: 0, maxQ: 0, qNow: 0,
     qaNow: 0, maxQA: 0, mach: 0, maxMach: 0, vacBoost: 1,
     easing: false, easedFor: 0,
-    events: [], jetsam: [],
+    events: [], jetsam: [], trace: [], lastTrace: -1,
   };
 }
 
@@ -1018,6 +1105,12 @@ function stepFlight(f) {
   f.vx += fx / m * DT;  f.vy += fy / m * DT;
   f.x  += f.vx * DT;    f.y  += f.vy * DT;
   f.t  += DT;
+  // a dot every quarter second for the graph after the flight:
+  // [time, height, what was burning - 1 boosters, 2 core, 3 service, 4 coasting, 5 parachute]
+  if (f.t - f.lastTrace >= 0.25) {
+    f.lastTrace = f.t;
+    f.trace.push([f.t, f.y, f.srbFire ? 1 : f.coreFire ? 2 : f.svcFire ? 3 : f.chuteOut ? 5 : 4]);
+  }
 
   if (f.y > f.apogee) f.apogee = f.y;
   const sp = Math.hypot(f.vx, f.vy);
@@ -2295,6 +2388,270 @@ function setControls() {
   syncFuelSlider();                     // sets the slider's range for this body first
   $("rFuel").value = Math.min(fuel, +$("rFuel").max);
   sel.fuel = +$("rFuel").value;
+}
+
+/* --------------------------------------------------------------------------
+   SHARE CODES - a rocket squeezed into a code a friend can type in.
+   JUPI-BBBB-BBBB-BBBB-BB, plus -NAME-SPEC on the end when the rocket uses a
+   homemade booster, so the friend gets the booster too. Parts are stored by
+   their place in the parts list, so the code also remembers which list it
+   was made with and warns if the friend's list is different.
+   -------------------------------------------------------------------------- */
+const B36 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const SWATCHES = ["#8f99b0", "#39d98a", "#ff5d6c", "#ffb020", "#4cc9f0",
+                  "#b07cff", "#ff7ac8", "#8a5a34", "#f4f4f4", "#2b3040"];
+function enc(n, w) {
+  n = Math.max(0, Math.round(n));
+  let out = "";
+  for (let i = 0; i < w; i++) { out = B36[n % 36] + out; n = Math.floor(n / 36); }
+  return out;
+}
+function dec(str) {
+  let n = 0;
+  for (const c of str) { const v = B36.indexOf(c); if (v < 0) return NaN; n = n * 36 + v; }
+  return n;
+}
+const checkChar = str => B36[[...str].reduce((a, c, i) => (a + (B36.indexOf(c) + 1) * (i + 7)) % 36, 0)];
+const LISTS = ["boosters", "tanks", "engines", "capsuleEngines", "capsules"];
+const fileParts = list => JUPI[list].filter(p => !p.custom);
+function partsPrint() {
+  let h = 0;
+  for (const list of LISTS) for (const p of fileParts(list)) for (const ch of p.name) h = (h * 31 + ch.charCodeAt(0)) % 1296;
+  return h;
+}
+
+function designCode(d) {
+  const idx = (list, nm) => Math.max(0, fileParts(list).findIndex(p => p.name === nm));
+  const boost = byName(JUPI.boosters, d.boosters);
+  let body = (boost.custom ? "Z" : enc(idx("boosters", d.boosters), 1)) +
+    enc(d.boosterSize / 0.05, 1) + enc(idx("tanks", d.tank), 1) + enc(idx("engines", d.engine), 1) +
+    enc(d.fuel / 10, 2) + enc(idx("capsuleEngines", d.capsuleEngine), 1) + enc(d.capsuleFuel / 10, 2) +
+    enc(idx("capsules", d.capsule), 1) + enc((d.easeOff - 55) / 5 + (d.parachute ? 0 : 10), 1) +
+    enc(partsPrint(), 2);
+  body += checkChar(body);
+  let code = "JUPI-" + body.slice(0, 4) + "-" + body.slice(4, 8) + "-" + body.slice(8, 12) + "-" + body.slice(12);
+  if (boost.custom) {
+    const name = boost.name.toUpperCase().replace(/[^A-Z0-9 ]/g, "").trim().replace(/ +/g, ".").slice(0, 20) || "MY.BOOSTERS";
+    let spec = enc(boost.heaviness, 2) + enc(boost.propellant / 5, 2) + enc(thrustPos(boost.thrust), 2) +
+               enc(boost.burnTime * 2, 2) + enc(Math.max(0, SWATCHES.indexOf(boost.color)), 1);
+    spec += checkChar(name + spec);
+    code += "-" + name + "-" + spec;
+  }
+  return code;
+}
+
+function showShareCode() { $("myCode").textContent = designCode(sel); }
+
+function loadCode(raw) {
+  const msg = t => { $("codeMsg").textContent = t; };
+  if (mode === "flying" || mode === "countdown") return msg("Wait until Jupi lands!");
+  const segs = String(raw).toUpperCase().replace(/[^A-Z0-9.\-]/g, "").split("-").filter(Boolean);
+  if (segs[0] === "JUPI") segs.shift();
+  const body = segs.slice(0, 4).join("");
+  if (body.length !== 14 || checkChar(body.slice(0, 13)) !== body[13] || (segs.length !== 4 && segs.length !== 6))
+    return msg("Hmm, that code doesn't look right. Check every letter and number!");
+  const at = (i, w) => dec(body.substr(i, w));
+  const pick = (list, i) => { const ps = fileParts(list); return ps[i] ? ps[i].name : null; };
+  const d = {
+    boosters: body[0] === "Z" ? null : pick("boosters", at(0, 1)),
+    boosterSize: +(at(1, 1) * 0.05).toFixed(2), tank: pick("tanks", at(2, 1)), engine: pick("engines", at(3, 1)),
+    fuel: at(4, 2) * 10, capsuleEngine: pick("capsuleEngines", at(6, 1)), capsuleFuel: at(7, 2) * 10,
+    capsule: pick("capsules", at(9, 1)), easeOff: 55 + (at(10, 1) % 10) * 5, parachute: at(10, 1) < 10,
+  };
+  const listDiffers = at(11, 2) !== partsPrint();
+
+  let made = "";
+  if (body[0] === "Z") {                              // it brought its own booster
+    const [name, spec] = segs.slice(4);
+    if (!spec || spec.length !== 10 || checkChar(name + spec.slice(0, 9)) !== spec[9])
+      return msg("The booster part of that code doesn't look right. Check the end of it!");
+    const sp = (i, w) => dec(spec.substr(i, w));
+    const b = { name: name.split(".").filter(Boolean).map(w => w[0] + w.slice(1).toLowerCase()).join(" ") || "Friend Boosters",
+                heaviness: sp(0, 2), propellant: sp(2, 2) * 5, thrust: thrustAt(sp(4, 2)),
+                burnTime: sp(6, 2) / 2, color: SWATCHES[sp(8, 1)] || SWATCHES[0] };
+    if (!(b.heaviness > 0 && b.propellant > 0 && b.burnTime > 0)) return msg("The booster part of that code doesn't look right.");
+    const same = JUPI.boosters.find(p => p.custom && p.name === b.name &&
+      p.heaviness === b.heaviness && p.propellant === b.propellant && p.thrust === b.thrust && p.burnTime === b.burnTime);
+    if (same) d.boosters = same.name;
+    else {
+      let nm = b.name, n = 2;
+      while (JUPI.boosters.some(p => p.name === nm)) nm = b.name + " " + n++;
+      b.name = nm;
+      JUPI.boosters.push(Object.assign(b, { custom: true }));
+      saveCustom();
+      d.boosters = nm; made = ' It came with a homemade booster called "' + nm + '" - it is in your list now.';
+    }
+  }
+  for (const k of ["boosters", "tank", "engine", "capsuleEngine", "capsule"]) if (d[k] == null) delete d[k];
+  applyDesign(d);
+  readPanel();
+  msg("Rocket loaded!" + made + (listDiffers ? " (That code was made with a different parts list, so it might not be exactly the same.)" : ""));
+}
+
+/* --------------------------------------------------------------------------
+   BOOSTER WORKSHOP - make your own boosters without touching the code.
+   They are saved in this browser, and show up in the booster list.
+   -------------------------------------------------------------------------- */
+const CUSTOM_KEY = "jupi.boosters.v1";
+const okNum = v => typeof v === "number" && isFinite(v) && v > 0;
+function loadCustom() {
+  try {
+    const v = JSON.parse(localStorage.getItem(CUSTOM_KEY) || "[]");
+    return Array.isArray(v) ? v.filter(b => b && typeof b.name === "string" && b.name &&
+      okNum(b.heaviness) && okNum(b.propellant) && okNum(b.thrust) && okNum(b.burnTime) &&
+      /^#[0-9a-f]{6}$/i.test(b.color)) : [];
+  } catch (e) { return []; }
+}
+function saveCustom() {
+  const keep = JUPI.boosters.filter(b => b.custom).map(b =>
+    ({ name: b.name, heaviness: b.heaviness, propellant: b.propellant, thrust: b.thrust, burnTime: b.burnTime, color: b.color }));
+  try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(keep)); } catch (e) {}
+}
+
+// The push slider goes up in multiplying steps, from a puff (500) to absurd (2,000,000).
+function thrustAt(x) {
+  const v = 500 * Math.pow(4000, x / 100), m = Math.pow(10, Math.floor(Math.log10(v)) - 1);
+  return Math.round(v / m) * m;
+}
+const thrustPos = th => clamp(Math.round(100 * Math.log(th / 500) / Math.log(4000)), 0, 100);
+
+let shopEditing = null, shopColor = SWATCHES[0], shopArmed = false;
+function openShop() {
+  if (mode === "flying" || mode === "countdown") return;
+  const cur = byName(JUPI.boosters, sel.boosters);
+  shopEditing = cur.custom ? cur.name : null;
+  $("shopTitle").textContent = cur.custom ? "EDIT YOUR BOOSTER" : "MAKE YOUR OWN BOOSTER";
+  $("bName").value = cur.custom ? cur.name : "";
+  $("bThrust").value = thrustPos(cur.thrust);
+  $("bBurn").value = cur.burnTime;
+  $("bProp").value = cur.propellant;
+  $("bHeavy").value = cur.heaviness;
+  shopColor = SWATCHES.includes(cur.color) ? cur.color : SWATCHES[0];
+  $("bDelete").hidden = !cur.custom;
+  $("bDelete").textContent = "DELETE"; shopArmed = false;
+  $("shopMsg").textContent = cur.custom ? "" : 'Starting from "' + cur.name + '". Change anything you like!';
+  $("shopMsg").style.color = "var(--dim)";
+  shopUpdate();
+  $("shop").classList.add("on");
+}
+function closeShop() { $("shop").classList.remove("on"); }
+
+function draftBooster() {
+  return { name: $("bName").value.trim().slice(0, 20), heaviness: +$("bHeavy").value, propellant: +$("bProp").value,
+           thrust: thrustAt(+$("bThrust").value), burnTime: +$("bBurn").value, color: shopColor };
+}
+
+function shopUpdate() {
+  const d = draftBooster();
+  $("vbThrust").textContent = d.thrust.toLocaleString();
+  $("vbBurn").textContent = d.burnTime + " s";
+  $("vbProp").textContent = d.propellant + " kg";
+  $("vbHeavy").textContent = d.heaviness + " kg";
+  for (const b of $("bColors").children) b.classList.toggle("on", b.dataset.c === shopColor);
+
+  // How it would fly on the rocket you have now - the same warnings as the
+  // panel, and no more. You still have to launch it to find out how high.
+  const DRAFT = "\u0000draft";
+  JUPI.boosters.push(Object.assign({}, d, { name: DRAFT }));
+  let r;
+  try { r = buildRocket(Object.assign({}, sel, { boosters: DRAFT })); } finally { JUPI.boosters.pop(); }
+  const mb = massBalance(r, atLiftoff(r)), twr = (r.srb.thrust + r.core.thrust) / (mb.m * JUPI.world.gravity);
+  const marg = mb.com - mb.cop, L = predictLoads(r);
+  $("shopStats").innerHTML =
+    '<div style="color:var(--dim);font-size:11px;letter-spacing:1px">ON YOUR ROCKET RIGHT NOW</div>' +
+    row("Lift power", twr.toFixed(2) + " x", twr >= 1.5 ? "good" : twr >= 1 ? "warn" : "bad") +
+    row("Steadiness", steadyWord(marg), marg > WOBBLY ? "good" : marg > TUMBLES ? "warn" : "bad") +
+    row("Air stress", stressWord(L.q) + " (" + Math.round(L.q / 1000) + " kPa)",
+        L.q < Q_LIMIT * 0.8 ? "good" : L.q < Q_LIMIT ? "warn" : "bad") +
+    row("Sideways bending", bendWord(L.qa), L.qa < QA_LIMIT * 0.8 ? "good" : L.qa < QA_LIMIT ? "warn" : "bad");
+
+  const pad = (v, w) => String(v).padStart(w);
+  $("shopCode").textContent =
+    '    { name: ' + JSON.stringify(d.name || "My Boosters") + ',\n' +
+    '      heaviness: ' + pad(d.heaviness, 5) + ',\n' +
+    '      propellant: ' + pad(d.propellant, 4) + ',\n' +
+    '      thrust: ' + pad(d.thrust, 8) + ',\n' +
+    '      burnTime: ' + pad(d.burnTime, 6) + ',\n' +
+    '      color: "' + d.color + '" },';
+}
+
+function shopSave() {
+  const d = draftBooster(), say = (t, bad) => { $("shopMsg").textContent = t; $("shopMsg").style.color = bad ? "var(--bad)" : "var(--dim)"; };
+  if (!d.name) return say("Give your booster a name first!", true);
+  const clash = JUPI.boosters.find(p => p.name.toLowerCase() === d.name.toLowerCase() && p.name !== shopEditing);
+  if (clash) return say('There is already a booster called "' + clash.name + '". Pick another name!', true);
+  if (shopEditing) {
+    const i = JUPI.boosters.findIndex(p => p.name === shopEditing);
+    JUPI.boosters[i] = Object.assign(d, { custom: true });
+  } else JUPI.boosters.push(Object.assign(d, { custom: true }));
+  saveCustom();
+  sel.boosters = d.name;
+  setControls(); readPanel();
+  closeShop();
+}
+
+function shopDelete() {
+  if (!shopEditing) return;
+  if (!shopArmed) { shopArmed = true; $("bDelete").textContent = "REALLY?"; return; }   // tap twice to delete
+  JUPI.boosters = JUPI.boosters.filter(p => p.name !== shopEditing);
+  saveCustom();
+  if (sel.boosters === shopEditing) sel.boosters = JUPI.boosters[0].name;
+  setControls(); readPanel();
+  closeShop();
+}
+
+/* --------------------------------------------------------------------------
+   THE FLIGHT GRAPH - height against time, coloured by what was burning.
+   It shows the climb and the start of the fall: the parachute ride down
+   takes so long that showing all of it would squash the climb flat.
+   -------------------------------------------------------------------------- */
+const STAGE_COLORS = { 1: ["#ff7a2f", "boosters"], 2: ["#ffc24a", "core"], 3: ["#4cc9f0", "service module"],
+                       4: ["#cfd8ee", "coasting"], 5: ["#39d98a", "parachute"] };
+function drawGraph(f) {
+  const el = $("graph"), box = el.getBoundingClientRect();
+  const W = box.width || 300, H = box.height || 130, dpr = Math.min(window.devicePixelRatio || 1, 2);
+  el.width = Math.round(W * dpr); el.height = Math.round(H * dpr);
+  const g = el.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, W, H);
+
+  const pts = f.trace.slice();
+  const last = pts.length ? pts[pts.length - 1][2] : 4;
+  pts.unshift([0, 0, 1]);
+  pts.push([f.t, f.y, last]);
+  let tTop = 0, yTop = 0;
+  for (const q of pts) if (q[1] > yTop) { yTop = q[1]; tTop = q[0]; }
+  const tEnd = Math.max(0.5, Math.min(f.t, Math.max(tTop * 1.6, 3)));
+  const L = 46, R = 10, T = 16, B = 18;
+  const X = t => L + Math.min(t / tEnd, 1) * (W - L - R);
+  const Y = y => H - B - (y / Math.max(yTop, 1)) * (H - T - B);
+
+  g.strokeStyle = "#2c3860"; g.lineWidth = 1;           // axes
+  g.beginPath(); g.moveTo(L, T - 4); g.lineTo(L, H - B); g.lineTo(W - R, H - B); g.stroke();
+  g.fillStyle = "#8fa0c8"; g.font = "10px Trebuchet MS, sans-serif";
+  g.textAlign = "right";
+  g.fillText(Math.round(yTop).toLocaleString() + " m", L - 4, T + 3);
+  g.fillText("0 m", L - 4, H - B);
+  g.textAlign = "left";  g.fillText("0 s", L, H - 5);
+  g.textAlign = "right"; g.fillText(Math.round(tEnd) + " s", W - R, H - 5);
+
+  const seen = new Set();
+  g.lineWidth = 3; g.lineCap = "round";
+  for (let i = 1; i < pts.length; i++) {
+    if (pts[i - 1][0] > tEnd) break;
+    const stage = pts[i][2];
+    seen.add(stage);
+    g.strokeStyle = STAGE_COLORS[stage][0];
+    g.beginPath(); g.moveTo(X(pts[i - 1][0]), Y(pts[i - 1][1])); g.lineTo(X(pts[i][0]), Y(pts[i][1])); g.stroke();
+  }
+  if (yTop > 0) {                                         // the top of the flight
+    g.fillStyle = "#fff";
+    g.beginPath(); g.arc(X(tTop), Y(yTop), 3.5, 0, 6.2832); g.fill();
+    g.textAlign = X(tTop) > W - 70 ? "right" : "left";
+    g.fillText("top! " + Math.round(tTop) + " s", X(tTop) + (g.textAlign === "left" ? 6 : -6), Y(yTop) + 3);
+  }
+  $("graphKey").innerHTML = [1, 2, 3, 4, 5].filter(k => seen.has(k)).map(k =>
+    '<span><i style="background:' + STAGE_COLORS[k][0] + '"></i>' + STAGE_COLORS[k][1] + "</span>").join("");
 }                     // the countdown, in page seconds
 
 function fillSelect(el, list, chosen) {
@@ -2322,6 +2679,8 @@ function readPanel() {
   sel.parachute     = $("cChute").checked;
   syncFuelSlider();
   saveDesign();
+  showShareCode();
+  $("makeBoost").textContent = byName(JUPI.boosters, sel.boosters).custom ? "EDIT THIS BOOSTER" : "MAKE YOUR OWN BOOSTER";
   refresh();
 }
 
@@ -2563,6 +2922,7 @@ function finish() {
   drawBoard(hi);
   showPilot();
   $("result").classList.add("on");
+  drawGraph(f);
   $("launch").disabled = false; $("mLaunch").disabled = false;
 }
 
@@ -2690,6 +3050,9 @@ function boot() {
     return;
   }
 
+  for (const b of loadCustom())                       // boosters made in the workshop
+    if (!JUPI.boosters.some(p => p.name === b.name)) JUPI.boosters.push(Object.assign({}, b, { custom: true }));
+
   const s = JUPI.startingRocket;
   sel = { boosters: s.boosters, boosterSize: s.boosterSize,
           tank: s.tank, engine: s.engine, fuel: s.fuel,
@@ -2741,6 +3104,20 @@ function boot() {
     try { localStorage.setItem(WHO_KEY, who.trim().slice(0, 14)); } catch (e) {}
     showPilot();
   });
+  $("codeGo").addEventListener("click", () => loadCode($("codeIn").value));
+  $("codeIn").addEventListener("keydown", e => { if (e.key === "Enter") loadCode($("codeIn").value); });
+
+  $("makeBoost").addEventListener("click", openShop);
+  $("bColors").innerHTML = SWATCHES.map(c => '<button data-c="' + c + '" style="background:' + c + '" aria-label="colour"></button>').join("");
+  $("bColors").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    shopColor = b.dataset.c; shopUpdate();
+  });
+  for (const id of ["bName", "bThrust", "bBurn", "bProp", "bHeavy"]) $(id).addEventListener("input", shopUpdate);
+  $("bCancel").addEventListener("click", closeShop);
+  $("bSave").addEventListener("click", shopSave);
+  $("bDelete").addEventListener("click", shopDelete);
+
   $("clear").addEventListener("click", () => {
     if (window.confirm("Clear the Hall of Fame for good?")) { saveBoard([]); drawBoard(-1); }
   });
@@ -2750,7 +3127,11 @@ function boot() {
     if (!Sound.on) Sound.setRumble(0);
   });
   window.addEventListener("keydown", e => {
-    if (e.code === "Space") { e.preventDefault(); if (mode !== "flying") launch(); }
+    if (e.code !== "Space") return;
+    const t = e.target;
+    if (t && (t.tagName === "TEXTAREA" || (t.tagName === "INPUT" && (t.type === "text" || t.type === "search")))) return;
+    if ($("shop").classList.contains("on")) return;      // typing a booster name
+    e.preventDefault(); if (mode !== "flying") launch();
   });
 
   resize();
