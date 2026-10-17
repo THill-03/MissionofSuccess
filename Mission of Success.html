@@ -1577,6 +1577,53 @@ function drawChute(sx, sy, z) {
 }
 
 /* ---- the whole scene ---- */
+/* NASA's Vehicle Assembly Building, drawn far off in the background. Real
+   sizes, in metres: the high bay is 160 m tall, the low bay beside it 64 m,
+   and the flag painted on the side is 64 m tall - stripes hang vertically. */
+function drawVAB(x0, baseY, H) {
+  const u = H / 160;                                  // pixels per metre
+  const X = m => x0 + m * u, Y = m => baseY - m * u;
+  const lowW = 90, highW = 218;
+
+  ctx.fillStyle = "#c9ced6";                          // low bay
+  ctx.fillRect(X(0), Y(64), lowW * u, 64 * u);
+  ctx.fillStyle = "#a9b0bb";
+  ctx.fillRect(X(0), Y(40), lowW * u, 6 * u);         // band of windows
+  ctx.fillStyle = "#dfe3e9";                          // high bay
+  ctx.fillRect(X(lowW), Y(160), highW * u, 160 * u);
+  ctx.fillStyle = "#9aa1ad";
+  ctx.fillRect(X(lowW), Y(160), highW * u, 3 * u);    // roof edge
+
+  ctx.strokeStyle = "rgba(120,128,142,0.25)";         // wall panels
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let m = lowW + 8; m < lowW + highW; m += 8) { ctx.moveTo(X(m), Y(157)); ctx.lineTo(X(m), Y(0)); }
+  ctx.stroke();
+
+  // the giant door Jupi-sized rockets roll out of
+  const dL = lowW + 150, dW = 34, dH = 139;
+  ctx.fillStyle = "#b4bbc6";
+  ctx.fillRect(X(dL), Y(dH), dW * u, dH * u);
+  ctx.strokeStyle = "rgba(90,98,112,0.45)";
+  ctx.beginPath();
+  for (let m = 12; m < dH; m += 12) { ctx.moveTo(X(dL), Y(m)); ctx.lineTo(X(dL + dW), Y(m)); }
+  ctx.stroke();
+
+  // the flag: 13 vertical stripes, blue canton top-left
+  const fL = lowW + 22, fT = 145, fW = 33.5, fH = 64, sw = fW / 13;
+  for (let i = 0; i < 13; i++) {
+    ctx.fillStyle = i % 2 ? "#f4f4f4" : "#b8323d";
+    ctx.fillRect(X(fL + i * sw), Y(fT), sw * u + 0.5, fH * u);
+  }
+  ctx.fillStyle = "#2c3e78";
+  ctx.fillRect(X(fL), Y(fT), sw * 7 * u, 25.5 * u);
+
+  // miles of air in between wash it all out a little
+  ctx.fillStyle = "rgba(191,228,247,0.4)";
+  ctx.fillRect(X(0), Y(64), lowW * u, 64 * u);
+  ctx.fillRect(X(lowW), Y(160), highW * u, 160 * u);
+}
+
 function render(r, f, t) {
   const alt = f ? f.y : 0;
   const z = zoomFor(alt, lengthNow(r, f));
@@ -1639,6 +1686,10 @@ function render(r, f, t) {
   // ---- ground ----
   const gy = toScrY(0);
   if (gy < VH + 20) {
+    // the Vehicle Assembly Building, miles away across the flats
+    const vabH = Math.min(VH * 0.12, VW * 0.14);
+    drawVAB(Math.max(VW * 0.03, VW * 0.3 - vabH * 1.93) - camX * z * 0.02, gy, vabH);
+
     const gg = ctx.createLinearGradient(0, gy, 0, VH);
     gg.addColorStop(0, "#6d9a5d"); gg.addColorStop(0.35, "#4e8f43"); gg.addColorStop(1, "#2f5f2c");
     ctx.fillStyle = gg;
