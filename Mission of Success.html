@@ -62,7 +62,7 @@
   #hStat{font-size:13px;font-weight:bold;letter-spacing:2.5px;margin-top:4px;color:var(--dim)}
   #bars{margin-top:6px}
   .bar{display:flex;align-items:center;gap:6px;margin-top:3px;transition:opacity .3s}
-  .bl{font-size:9px;letter-spacing:1.5px;width:30px;color:#cfd8ee}
+  .bar .bl{font-size:9px;letter-spacing:1.5px;width:30px;color:#cfd8ee}
   .bt{display:block;width:124px;height:9px;border:1px solid #fff7;border-radius:5px;overflow:hidden}
   .bf{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--hot2),var(--hot))}
   #best{position:absolute;top:14px;right:14px;text-align:right;font-size:13px;
@@ -96,7 +96,13 @@
   .bl{display:flex;justify-content:space-between;padding:2px 0;color:var(--dim)}
   .bl.me{color:var(--hot2);font-weight:bold}
   .bl span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
-  #clear{background:none;border:none;color:#54618c;font:inherit;font-size:11px;cursor:pointer;
+  .bl.pick{cursor:pointer;border-radius:4px}
+  .bl.pick:hover{background:#ffffff12;color:#eef3ff}
+  #pilot{font-size:12px;color:var(--dim);margin:0 0 4px}
+  #pilot b{color:#eef3ff}
+  #boardTip{font-size:11px;color:#54618c;margin:0 0 5px}
+  #delta{font-size:15px;margin:0 0 6px;color:#cfd8ee}
+  #clear, #pilotChange{background:none;border:none;color:#54618c;font:inherit;font-size:11px;cursor:pointer;
          text-decoration:underline;margin-top:7px;padding:0}
 
   /* ---------- phones and small screens ----------
@@ -226,6 +232,8 @@
 
       <div id="board">
         <h3>Hall of Fame</h3>
+        <div id="pilot">Pilot: <b id="pilotName"></b> <button id="pilotChange">change</button></div>
+        <div id="boardTip">Tap a rocket to load it and fly it again.</div>
         <div id="boardList"></div>
         <button id="clear">clear the board</button>
       </div>
@@ -271,6 +279,7 @@
   <div id="card">
     <h2>JUPI REACHED</h2>
     <div id="score">0 m</div>
+    <div id="delta"></div>
     <div id="why"></div>
     <div id="record"></div>
     <div id="cardBtns">
@@ -2205,8 +2214,14 @@ function drawBoard(hi) {
   const b = loadBoard(), el = document.getElementById("boardList");
   if (!b.length) { el.innerHTML = '<div class="bl"><span>nobody yet&hellip;</span><span></span></div>'; return; }
   el.innerHTML = b.slice(0, 8).map((e, i) =>
-    '<div class="bl' + (i === hi ? ' me' : '') + '"><span>' + (i + 1) + '. ' + esc(e.who) +
+    '<div class="bl' + (i === hi ? ' me' : '') + (e.design ? ' pick" data-i="' + i + '" title="' + esc(describeDesign(e.design)) : '') +
+    '"><span>' + (i + 1) + '. ' + esc(e.who) +
     ' &middot; ' + esc(e.rocket) + '</span><span>' + Math.round(e.alt) + ' m</span></div>').join("");
+}
+function showPilot() {
+  let who = null;
+  try { who = localStorage.getItem(WHO_KEY); } catch (e) {}
+  $("pilotName").textContent = who || "asks after your first flight";
 }
 function esc(s) {
   return String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -2217,7 +2232,70 @@ function esc(s) {
    -------------------------------------------------------------------------- */
 const $ = id => document.getElementById(id);
 let sel = null, rocket = null, flight = null, mode = "build", sessionBest = 0, lastRealT = 0, ffStart = 0;
-let countEnd = null, countLen = 0, lastBeep = -1;                     // the countdown, in page seconds
+let countEnd = null, countLen = 0, lastBeep = -1;
+let flown = null, lastFlown = null;    // the rocket just flown, and the flight before it
+
+/* A rocket design is just the panel settings. It is saved in this browser so
+   closing the page does not lose it - unless someone changes startingRocket
+   in the parts list, and then the new startingRocket wins. */
+const DESIGN_KEY = "jupi.rocket.v1";
+const DESIGN_KEYS = ["boosters", "boosterSize", "tank", "engine", "fuel",
+                     "capsuleEngine", "capsuleFuel", "capsule", "easeOff", "parachute"];
+const DESIGN_WORDS = { boosters: "boosters", boosterSize: "booster size", tank: "main body",
+  engine: "core engine", fuel: "core fuel", capsuleEngine: "service module",
+  capsuleFuel: "service fuel", capsule: "Jupi module", easeOff: "ease off", parachute: "parachute" };
+function designOf(s) { const d = {}; for (const k of DESIGN_KEYS) d[k] = s[k]; return d; }
+function designValue(k, v) {
+  if (k === "parachute")   return v ? "on" : "off";
+  if (k === "boosterSize") return (+v).toFixed(2);
+  if (k === "fuel" || k === "capsuleFuel") return v + " kg";
+  if (k === "easeOff")     return v >= 100 ? "off" : v + "%";
+  return v;
+}
+function describeDesign(d) { return DESIGN_KEYS.map(k => DESIGN_WORDS[k] + ": " + designValue(k, d[k])).join("\n"); }
+
+const startPrint = () => JSON.stringify(JUPI.startingRocket);
+function saveDesign() {
+  try { localStorage.setItem(DESIGN_KEY, JSON.stringify({ start: startPrint(), d: designOf(sel) })); } catch (e) {}
+}
+function loadDesign() {
+  try {
+    const v = JSON.parse(localStorage.getItem(DESIGN_KEY) || "null");
+    return v && v.start === startPrint() && v.d ? v.d : null;
+  } catch (e) { return null; }
+}
+
+// Put a design into the panel. Parts that no longer exist are skipped and named.
+function applyDesign(d) {
+  const missing = [];
+  const part = (k, list) => {
+    if (d[k] == null) return;
+    if (JUPI[list].some(p => p.name === d[k])) sel[k] = d[k]; else missing.push(d[k]);
+  };
+  part("boosters", "boosters"); part("tank", "tanks"); part("engine", "engines");
+  part("capsuleEngine", "capsuleEngines"); part("capsule", "capsules");
+  for (const k of ["boosterSize", "fuel", "capsuleFuel", "easeOff"])
+    if (typeof d[k] === "number" && isFinite(d[k])) sel[k] = d[k];
+  if (typeof d.parachute === "boolean") sel.parachute = d.parachute;
+  setControls();
+  return missing;
+}
+
+function setControls() {
+  fillSelect($("selBoost"),   JUPI.boosters,       sel.boosters);
+  fillSelect($("selTank"),    JUPI.tanks,          sel.tank);
+  fillSelect($("selEngine"),  JUPI.engines,        sel.engine);
+  fillSelect($("selCapsule"), JUPI.capsules,       sel.capsule);
+  fillSelect($("selCapEng"),  JUPI.capsuleEngines, sel.capsuleEngine);
+  $("rBoost").value   = sel.boosterSize;
+  $("rCapFuel").value = sel.capsuleFuel;
+  $("rThr").value = sel.easeOff;
+  $("cChute").checked = sel.parachute;
+  const fuel = sel.fuel;
+  syncFuelSlider();                     // sets the slider's range for this body first
+  $("rFuel").value = Math.min(fuel, +$("rFuel").max);
+  sel.fuel = +$("rFuel").value;
+}                     // the countdown, in page seconds
 
 function fillSelect(el, list, chosen) {
   el.innerHTML = list.map(p => '<option' + (p.name === chosen ? " selected" : "") + '>' + esc(p.name) + '</option>').join("");
@@ -2243,6 +2321,7 @@ function readPanel() {
   sel.easeOff       = +$("rThr").value;
   sel.parachute     = $("cChute").checked;
   syncFuelSlider();
+  saveDesign();
   refresh();
 }
 
@@ -2342,26 +2421,30 @@ function row(k, v, c) {
    LAUNCH!
    -------------------------------------------------------------------------- */
 function launch() {
-  if (mode === "flying" || mode === "countdown") return;
+  if (mode === "countdown") { startFlight(); return; }   // pressed again: skip the countdown
+  if (mode === "flying") return;
   readPanel();
   Sound.wake();
   bits = [];
   $("result").classList.remove("on");
-  $("launch").disabled = true; $("mLaunch").disabled = true;
   const n = countdownLength();
   if (n > 0) {
     mode = "countdown"; flight = null;
     countEnd = null; countLen = n; lastBeep = -1;
     $("hAlt").textContent = "0"; $("hSpd").textContent = "0"; $("hTime").textContent = "0.0";
+    $("launch").textContent = $("mLaunch").textContent = "GO NOW!";
   } else startFlight();
 }
 
 function startFlight() {
   readPanel();
+  flown = designOf(sel);
   Sound.startRumble();
   flight = newFlight(rocket);
   mode = "flying";
   ffStart = 0;
+  $("launch").textContent = $("mLaunch").textContent = "LAUNCH";
+  $("launch").disabled = true; $("mLaunch").disabled = true;
 }
 
 const STATUS = {
@@ -2445,6 +2528,19 @@ function finish() {
   }[f.outcome] || "";
 
   $("score").textContent = alt.toLocaleString() + " m";
+  if (lastFlown) {
+    const diff = alt - lastFlown.alt;
+    const changed = DESIGN_KEYS.filter(k => lastFlown.d[k] !== flown[k]);
+    const how = diff > 0 ? '<b style="color:var(--go)">' + diff.toLocaleString() + " m higher</b> than last flight"
+              : diff < 0 ? '<b style="color:var(--bad)">' + (-diff).toLocaleString() + " m lower</b> than last flight"
+              : "Exactly the same height as last flight";
+    const what = changed.length === 0 ? "same rocket as last time"
+               : changed.length <= 2 ? "you changed " + changed.map(k =>
+                   DESIGN_WORDS[k] + " " + designValue(k, lastFlown.d[k]) + " \u2192 " + designValue(k, flown[k])).join(", ")
+               : "you changed " + changed.length + " things";
+    $("delta").innerHTML = how + " &middot; " + esc(what);
+  } else $("delta").innerHTML = "";
+  lastFlown = { alt, d: flown };
   $("why").innerHTML = struggled + why + (tip ? '<br><span style="font-size:14px;color:#8fa0c8">' + tip + "</span>" : "");
 
   let hi = -1;
@@ -2452,7 +2548,9 @@ function finish() {
     const board = loadBoard();
     const best = board.length ? board[0].alt : 0;
     const who = whoAmI();
-    board.push({ who, rocket: rocket.engine.name.split(" ")[0] + "+" + rocket.capEng.name.split(" ")[0] + "+" + rocket.capsule.name.split(" ")[0], alt, when: Date.now() });
+    board.push({ who, rocket: flown.boosters.split(" ")[0] + " " + flown.boosterSize.toFixed(2) + ", " +
+                 flown.engine.split(" ")[0] + "+" + flown.capsuleEngine.split(" ")[0],
+                 alt, when: Date.now(), design: flown });
     board.sort((a, b) => b.alt - a.alt);
     saveBoard(board);
     hi = board.findIndex(e => e.alt === alt && e.who === who);
@@ -2463,6 +2561,7 @@ function finish() {
 
   $("bestAlt").textContent = sessionBest ? sessionBest.toLocaleString() + " m" : "—";
   drawBoard(hi);
+  showPilot();
   $("result").classList.add("on");
   $("launch").disabled = false; $("mLaunch").disabled = false;
 }
@@ -2599,17 +2698,8 @@ function boot() {
           easeOff: s.easeOff == null ? 100 : s.easeOff,
           parachute: s.parachute !== false };
 
-  fillSelect($("selBoost"),   JUPI.boosters,       sel.boosters);
-  fillSelect($("selTank"),    JUPI.tanks,          sel.tank);
-  fillSelect($("selEngine"),  JUPI.engines,        sel.engine);
-  fillSelect($("selCapsule"), JUPI.capsules,       sel.capsule);
-  fillSelect($("selCapEng"),  JUPI.capsuleEngines, sel.capsuleEngine);
-  $("rBoost").value   = sel.boosterSize;
-  $("rCapFuel").value = sel.capsuleFuel;
-  $("rThr").value = sel.easeOff;
-  $("cChute").checked = sel.parachute;
-  syncFuelSlider();
-  $("rFuel").value = Math.min(sel.fuel, +$("rFuel").max);
+  const saved = loadDesign();
+  if (saved) applyDesign(saved); else setControls();
 
   for (const id of ["selBoost", "rBoost", "selTank", "selEngine", "rFuel",
                     "selCapsule", "selCapEng", "rCapFuel", "rThr", "cChute"])
@@ -2631,6 +2721,26 @@ function boot() {
     $("result").classList.remove("on"); mode = "build"; flight = null;
     if (getComputedStyle($("mobilebar")).display !== "none") openDrawer(true);
   });
+  $("boardList").addEventListener("click", e => {
+    const row = e.target.closest(".pick");
+    if (!row || mode === "flying" || mode === "countdown") return;
+    const entry = loadBoard()[+row.dataset.i];
+    if (!entry || !entry.design) return;
+    const missing = applyDesign(entry.design);
+    readPanel();
+    $("boardTip").textContent = missing.length
+      ? "Loaded - but these parts are gone now, so they were kept as they were: " + missing.join(", ")
+      : "Loaded " + entry.who + "'s " + Math.round(entry.alt).toLocaleString() + " m rocket!";
+  });
+  $("pilotChange").addEventListener("click", () => {
+    let cur = "Pilot";
+    try { cur = localStorage.getItem(WHO_KEY) || cur; } catch (e) {}
+    let who = null;
+    try { who = window.prompt("Who's flying now?", cur); } catch (e) {}
+    if (!who || !who.trim()) return;
+    try { localStorage.setItem(WHO_KEY, who.trim().slice(0, 14)); } catch (e) {}
+    showPilot();
+  });
   $("clear").addEventListener("click", () => {
     if (window.confirm("Clear the Hall of Fame for good?")) { saveBoard([]); drawBoard(-1); }
   });
@@ -2646,6 +2756,7 @@ function boot() {
   resize();
   readPanel();
   drawBoard(-1);
+  showPilot();
   lastRealT = performance.now();
   requestAnimationFrame(frame);
 }
