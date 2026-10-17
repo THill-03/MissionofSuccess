@@ -331,6 +331,8 @@ const JUPI = {
     wind:         3,      // sideways wind, in metres per second.
                           //   Slow rockets get blown around WAY more than fast ones.
                           //   Crank it up to 12 and watch Jupi lean into it!
+    countdown:    5,      // seconds of countdown after you press LAUNCH.
+                          //   Set it to 0 to blast off straight away.
   },
 
 
@@ -701,6 +703,10 @@ function checkParts() {
     if (!Array.isArray(arr) || arr.length === 0) { problems.push("The " + key + " list is empty or missing - you need at least one!"); continue; }
     arr.forEach((p, i) => need(p, key + " #" + (i + 1), fields));
   }
+
+  const cd = JUPI.world && JUPI.world.countdown;
+  if (cd != null && (!num(cd) || cd < 0))
+    problems.push("world: countdown should be a plain number, 0 or more - like  countdown: 5,");
 
   const s = JUPI.startingRocket;
   if (!s || typeof s !== "object") problems.push("startingRocket is missing.");
@@ -1624,6 +1630,316 @@ function drawVAB(x0, baseY, H) {
   ctx.fillRect(X(lowW), Y(160), highW * u, 160 * u);
 }
 
+/* ---- the rest of Kennedy Space Center ----
+   The far-off things share the VAB's metres-to-pixels (u). Things nearer the
+   pad are drawn a bit bigger, the way closer things look bigger. */
+function drawPalm(x, baseY, h, lean) {
+  ctx.strokeStyle = "#8f8270"; ctx.lineWidth = Math.max(1.5, h * 0.06);
+  ctx.beginPath(); ctx.moveTo(x, baseY);
+  ctx.quadraticCurveTo(x + lean * h * 0.1, baseY - h * 0.5, x + lean * h * 0.25, baseY - h);
+  ctx.stroke();
+  const tx = x + lean * h * 0.25, ty = baseY - h;
+  ctx.strokeStyle = "#5f8c66"; ctx.lineWidth = Math.max(1.5, h * 0.08);
+  ctx.beginPath();
+  for (const a of [-2.7, -2.2, -1.6, -1.0, -0.45]) {
+    ctx.moveTo(tx, ty);
+    ctx.quadraticCurveTo(tx + Math.cos(a) * h * 0.35, ty + Math.sin(a) * h * 0.3,
+                         tx + Math.cos(a) * h * 0.5, ty + Math.sin(a) * h * 0.08 + h * 0.18);
+  }
+  ctx.stroke();
+}
+
+function drawSkyline(x0, gy, t) {
+  const u = Math.min(VH * 0.12, VW * 0.14) / 160, near = u * 1.3;
+  const X = fr => x0 + VW * fr;
+
+  // the Atlantic, a thin blue strip on the horizon to the east
+  ctx.fillStyle = "#6aa7cf";
+  ctx.fillRect(X(0.5), gy - Math.max(3, 6 * u), VW * 0.5 + 400, Math.max(3, 6 * u));
+
+  // lightning towers: tall masts strung with wire, so lightning hits them
+  // and not the rocket
+  const towers = [0.68, 0.8, 0.92], tH = 180 * near;
+  ctx.strokeStyle = "rgba(112,120,136,0.55)"; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(X(towers[0]) - 60 * near, gy);
+  ctx.quadraticCurveTo(X(towers[0]) - 20 * near, gy - tH * 0.5, X(towers[0]), gy - tH);
+  for (let i = 1; i < towers.length; i++)
+    ctx.quadraticCurveTo((X(towers[i - 1]) + X(towers[i])) / 2, gy - tH * 0.62, X(towers[i]), gy - tH);
+  ctx.quadraticCurveTo(X(towers[2]) + 20 * near, gy - tH * 0.5, X(towers[2]) + 60 * near, gy);
+  ctx.stroke();
+  for (const fr of towers) {
+    ctx.fillStyle = "#98a1b0";
+    ctx.fillRect(X(fr) - Math.max(1, 1.6 * near), gy - tH * 0.88, Math.max(2, 3.2 * near), tH * 0.88);
+    ctx.fillStyle = "#c3c8d0";                        // fibreglass tip
+    ctx.fillRect(X(fr) - Math.max(0.5, 0.8 * near), gy - tH, Math.max(1, 1.6 * near), tH * 0.12);
+    ctx.fillStyle = Math.sin(t * 3 + fr * 9) > 0 ? "#ff3b3b" : "#7a2a2a";   // warning light
+    ctx.beginPath(); ctx.arc(X(fr), gy - tH, Math.max(1.5, 2.5 * near), 0, 6.2832); ctx.fill();
+  }
+
+  // the water tower that floods the pad at liftoff to soak up the noise
+  const wx = X(0.74), wH = 88 * near, legW = 16 * near;
+  ctx.strokeStyle = "#9aa3b2"; ctx.lineWidth = Math.max(1, 1.4 * near);
+  ctx.beginPath();
+  ctx.moveTo(wx - legW, gy); ctx.lineTo(wx - legW * 0.45, gy - wH * 0.62);
+  ctx.moveTo(wx + legW, gy); ctx.lineTo(wx + legW * 0.45, gy - wH * 0.62);
+  ctx.moveTo(wx - legW * 0.8, gy - wH * 0.12); ctx.lineTo(wx + legW * 0.6, gy - wH * 0.42);
+  ctx.moveTo(wx + legW * 0.8, gy - wH * 0.12); ctx.lineTo(wx - legW * 0.6, gy - wH * 0.42);
+  ctx.stroke();
+  ctx.fillStyle = "#e3e7ed";
+  ctx.beginPath(); ctx.ellipse(wx, gy - wH * 0.78, 20 * near, wH * 0.2, 0, 0, 6.2832); ctx.fill();
+  ctx.fillStyle = "#b8c0cc";
+  ctx.fillRect(wx - 20 * near, gy - wH * 0.79, 40 * near, Math.max(1, 1.5 * near));
+
+  // palm trees
+  drawPalm(X(0.335), gy, 22 * u * 2, 1);
+  drawPalm(X(0.37), gy, 17 * u * 2, -1);
+  drawPalm(X(0.6), gy, 20 * u * 2, 1);
+  drawPalm(X(0.97), gy, 24 * u * 2, -1);
+}
+
+// the crawler-transporter, parked by the VAB. It carries whole rockets to the
+// pad at about 1 mile an hour.
+function drawCrawler(x, gy) {
+  const s = Math.min(VH * 0.12, VW * 0.14) / 160 * 5;
+  const w = 40 * s;
+  ctx.fillStyle = "#4b505b";                          // four track units
+  for (const fr of [0.02, 0.27, 0.55, 0.8])
+    ctx.fillRect(x + w * fr, gy - 2.6 * s, w * 0.18, 2.6 * s);
+  ctx.fillStyle = "#8e939c";                          // the deck
+  ctx.fillRect(x, gy - 5.2 * s, w, 2.6 * s);
+  ctx.fillStyle = "#a7acb4";
+  ctx.fillRect(x + w * 0.04, gy - 7.6 * s, w * 0.18, 2.4 * s);   // control cabs
+  ctx.fillRect(x + w * 0.78, gy - 7.6 * s, w * 0.18, 2.4 * s);
+  ctx.fillStyle = "rgba(191,228,247,0.3)";
+  ctx.fillRect(x, gy - 7.6 * s, w, 7.6 * s);
+}
+
+const two = n => String(n).padStart(2, "0");
+const mmss = s => two(Math.floor(s / 60)) + ":" + two(s % 60);
+function countdownLength() { const c = JUPI.world.countdown; return c == null ? 5 : c; }
+
+/* The near side of the fence: the countdown clock, a sunbathing alligator,
+   and a crowd who came to watch. They react to the countdown. */
+function drawCrowdSide(px, gy, t, f) {
+  const s = clamp(VH / 900, 0.65, 1.3);
+  const fy = gy + (VH - gy) * 0.3;
+
+  // ---- the countdown clock, with the flag beside it ----
+  const cw = Math.min(140 * s, VW * 0.3), ch = cw * 0.3, cl = px - VW * 0.45;
+  const boardY = fy - ch - 14 * s;
+  ctx.fillStyle = "#5b6070";
+  ctx.fillRect(cl + cw * 0.15, boardY + ch, 4 * s, 14 * s);
+  ctx.fillRect(cl + cw * 0.85 - 4 * s, boardY + ch, 4 * s, 14 * s);
+  ctx.fillStyle = "#14161c";
+  ctx.fillRect(cl, boardY, cw, ch);
+  ctx.strokeStyle = "#3a3f4c"; ctx.lineWidth = 2;
+  ctx.strokeRect(cl, boardY, cw, ch);
+  let txt;
+  if (mode === "countdown") txt = "T-" + mmss(clamp(Math.ceil(countEnd - t), 0, Math.ceil(countLen)));
+  else if (f)              txt = "T+" + mmss(Math.floor(f.t));
+  else                     txt = "T-" + mmss(Math.ceil(countdownLength()));
+  ctx.font = "bold " + Math.round(ch * 0.58) + "px Courier New, monospace";
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#ffb020";
+  ctx.shadowColor = "#ff8a00"; ctx.shadowBlur = 6;
+  ctx.fillText(txt, cl + cw / 2, boardY + ch * 0.7);
+  ctx.shadowBlur = 0;
+
+  const poleX = cl - 6 * s, poleTop = boardY - 34 * s;
+  ctx.fillStyle = "#c9ccd2";
+  ctx.fillRect(poleX, poleTop, 2.5 * s, fy - poleTop);
+  const fw = 30 * s, fh = 16 * s, sh = fh / 13;
+  for (let i = 0; i < 13; i++) {
+    ctx.fillStyle = i % 2 ? "#f4f4f4" : "#b8323d";
+    ctx.fillRect(poleX + 2.5 * s, poleTop + i * sh + Math.sin(t * 3 + i * 0.1) * s, fw, sh + 0.4);
+  }
+  ctx.fillStyle = "#2c3e78";
+  ctx.fillRect(poleX + 2.5 * s, poleTop + Math.sin(t * 3) * s, fw * 0.42, sh * 7);
+
+  // ---- the alligator. Kennedy Space Center really is full of them. ----
+  const gl = Math.min(115 * s, VW * 0.26), gs = gl / 60, gx = px - VW * 0.14, gyy = fy - 3 * s;
+  const yawn = Math.pow(Math.max(0, Math.sin(t * 0.8)), 10) * 0.45;
+  ctx.fillStyle = "#4f6b3c";
+  ctx.beginPath();                                    // tail to body
+  ctx.moveTo(gx, gyy - 2 * gs);
+  ctx.quadraticCurveTo(gx + gl * 0.3, gyy - 9 * gs, gx + gl * 0.62, gyy - 7 * gs);
+  ctx.lineTo(gx + gl * 0.62, gyy);
+  ctx.lineTo(gx + gl * 0.1, gyy);
+  ctx.closePath(); ctx.fill();
+  ctx.save();                                         // head, top jaw tips up to yawn
+  ctx.translate(gx + gl * 0.62, gyy - 3.5 * gs);
+  ctx.rotate(-yawn);
+  ctx.beginPath(); ctx.moveTo(0, -3.5 * gs); ctx.lineTo(gl * 0.38, -0.5 * gs); ctx.lineTo(gl * 0.38, 0.8 * gs); ctx.lineTo(0, 0.8 * gs);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#fff";                             // eye
+  ctx.beginPath(); ctx.arc(gl * 0.08, -3.3 * gs, 2 * gs, 0, 6.2832); ctx.fill();
+  ctx.fillStyle = "#111";
+  ctx.beginPath(); ctx.arc(gl * 0.085, -3.3 * gs, 1 * gs, 0, 6.2832); ctx.fill();
+  ctx.restore();
+  ctx.fillStyle = "#43592f";                          // bottom jaw
+  ctx.fillRect(gx + gl * 0.62, gyy - 3.2 * gs, gl * 0.36, 3.2 * gs);
+  if (yawn > 0.05) {
+    ctx.fillStyle = "#f2e9d8";                        // teeth!
+    for (let i = 1; i < 6; i++)
+      ctx.fillRect(gx + gl * (0.62 + i * 0.06), gyy - 4.2 * gs, 1.2 * gs, 1.4 * gs);
+  }
+  ctx.fillStyle = "#3d5230";                          // bumpy back and legs
+  for (let i = 0; i < 6; i++) ctx.fillRect(gx + gl * (0.2 + i * 0.07), gyy - 8.5 * gs + Math.abs(i - 3) * 0.6 * gs, 1.6 * gs, 1.6 * gs);
+  ctx.fillRect(gx + gl * 0.25, gyy - 1 * gs, 4 * gs, 2 * gs);
+  ctx.fillRect(gx + gl * 0.52, gyy - 1 * gs, 4 * gs, 2 * gs);
+
+  // ---- the crowd ----
+  const rem = mode === "countdown" ? countEnd - t : null;
+  const mood = rem != null ? (rem <= 1.5 ? "ears" : "excited")
+             : (f && mode !== "build") ? (f.t < 4 ? "ears" : "cheer") : "idle";
+  const c0 = px + VW * 0.12, c1 = px + VW * 0.47;
+  const shirts = ["#ff5d6c", "#4cc9f0", "#ffc24a", "#39d98a", "#b07cff", "#ff9a3f", "#f4f4f4"];
+  const skins = ["#f1c9a5", "#c68e63", "#8d5a3b", "#e8b48f", "#5c3a24"];
+  const n = Math.max(3, Math.floor((c1 - c0) / (17 * s)));
+  for (let i = 0; i < n; i++) {
+    const x = c0 + (i + 0.5) * (c1 - c0) / n + (i % 2 ? 3 : -3) * s;
+    const tall = (i % 3 === 1 ? 0.82 : 1) * s;      // some grown-ups, some kids
+    const hop = mood === "excited" || mood === "cheer" ? -Math.abs(Math.sin(t * 7 + i * 1.7)) * 5 * s : 0;
+    const by = fy - 6 * s + hop - (i % 2) * 3 * s;  // two rows
+    const top = by - 30 * tall;
+    ctx.strokeStyle = "#2b3040"; ctx.lineWidth = 2.4 * s;
+    ctx.beginPath();                                  // legs
+    ctx.moveTo(x - 2.5 * s, by); ctx.lineTo(x - 2 * s, by - 10 * tall);
+    ctx.moveTo(x + 2.5 * s, by); ctx.lineTo(x + 2 * s, by - 10 * tall);
+    ctx.stroke();
+    ctx.fillStyle = shirts[i % shirts.length];        // body
+    ctx.fillRect(x - 4 * s, by - 21 * tall, 8 * s, 12 * tall);
+    const hx = x, hy = top + 4 * s;
+    ctx.strokeStyle = skins[i % skins.length]; ctx.lineWidth = 2.2 * s;
+    ctx.beginPath();                                  // arms
+    const sx = by - 19 * tall;
+    if (mood === "ears") {
+      ctx.moveTo(x - 4 * s, sx); ctx.lineTo(hx - 5 * s, hy);
+      ctx.moveTo(x + 4 * s, sx); ctx.lineTo(hx + 5 * s, hy);
+    } else if (mood === "excited" || mood === "cheer") {
+      const wave = Math.sin(t * 9 + i) * 3 * s;
+      ctx.moveTo(x - 4 * s, sx); ctx.lineTo(x - 8 * s + wave, top - 6 * s);
+      ctx.moveTo(x + 4 * s, sx); ctx.lineTo(x + 8 * s - wave, top - 6 * s);
+    } else {
+      ctx.moveTo(x - 4 * s, sx); ctx.lineTo(x - 6 * s, sx + 10 * tall);
+      ctx.moveTo(x + 4 * s, sx); ctx.lineTo(x + 6 * s, sx + 10 * tall);
+    }
+    ctx.stroke();
+    ctx.fillStyle = skins[i % skins.length];          // head
+    ctx.beginPath(); ctx.arc(hx, hy, 4.5 * s, 0, 6.2832); ctx.fill();
+    if (i % 4 === 0) {                                // a cap
+      ctx.fillStyle = shirts[(i + 3) % shirts.length];
+      ctx.fillRect(hx - 4.5 * s, hy - 5 * s, 9 * s, 2.6 * s);
+      ctx.fillRect(hx, hy - 3.2 * s, 6 * s, 1.4 * s);
+    }
+  }
+  ctx.fillStyle = "#d9d2c2";                          // the fence in front
+  ctx.fillRect(c0 - 6 * s, fy - 13 * s, c1 - c0 + 12 * s, 2 * s);
+  ctx.fillRect(c0 - 6 * s, fy - 6 * s, c1 - c0 + 12 * s, 2 * s);
+  for (let x = c0 - 6 * s; x <= c1 + 6 * s; x += 22 * s) ctx.fillRect(x, fy - 15 * s, 2.5 * s, 15 * s);
+}
+
+/* Things Jupi flies past. They sit far behind it, so they slide by slower
+   than the clouds (p is how near they are: 1 = right next to Jupi). Only on
+   a world with air - no birds or planes on the Moon. */
+const SKY = [
+  { kind: "birds",   alt: 90,   p: 0.22, fx: 0.15, speed: 22,  n: 5 },
+  { kind: "birds",   alt: 170,  p: 0.22, fx: 0.7,  speed: -26, n: 4 },
+  { kind: "birds",   alt: 260,  p: 0.22, fx: 0.3,  speed: 18,  n: 6 },
+  { kind: "birds",   alt: 380,  p: 0.22, fx: 0.8,  speed: -20, n: 3 },
+  { kind: "birds",   alt: 520,  p: 0.22, fx: 0.2,  speed: 24,  n: 5 },
+  { kind: "plane",   alt: 2300, p: 0.12, fx: 0.3,  speed: 45 },
+  { kind: "balloon", alt: 4600, p: 0.1,  fx: 0.72, speed: 0 },
+];
+
+function drawPelican(x, y, s, flap) {
+  ctx.strokeStyle = "#3b404c"; ctx.lineWidth = Math.max(1.5, s * 0.09);
+  ctx.beginPath();
+  ctx.moveTo(x - s * 0.5, y + flap * s * 0.3);
+  ctx.quadraticCurveTo(x - s * 0.22, y - s * 0.12, x, y);
+  ctx.quadraticCurveTo(x + s * 0.22, y - s * 0.12, x + s * 0.5, y + flap * s * 0.3);
+  ctx.stroke();
+  ctx.fillStyle = "#3b404c";
+  ctx.beginPath(); ctx.ellipse(x, y + s * 0.04, s * 0.16, s * 0.07, 0, 0, 6.2832); ctx.fill();
+}
+
+function drawSkyThings(alt, z, t) {
+  if (!(JUPI.world.airThickness > 0)) return;
+  const groundY = VH * 0.74, span = VW + 260;
+  for (const o of SKY) {
+    const sy = groundY - (o.alt - alt) * z * o.p;
+    if (sy < -90 || sy > VH + 90) continue;
+    if (o.seen == null || t - o.last > 2) o.seen = t;   // start crossing when it comes into view
+    o.last = t;
+    const sx = ((o.fx * VW + o.speed * (t - o.seen)) % span + span) % span - 130;
+
+    if (o.kind === "birds") {                         // pelicans, flying in a line
+      const s = clamp(2 * z * o.p, 10, 30), dir = Math.sign(o.speed) || 1;
+      for (let i = 0; i < o.n; i++)
+        drawPelican(sx - dir * i * s * 1.1, sy + i * s * 0.28, s, Math.sin(t * 5 + i * 0.6));
+    }
+    else if (o.kind === "plane") {                    // a beach plane towing a banner
+      const L = 46;
+      ctx.strokeStyle = "#ffffffaa"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(sx - L * 0.5, sy); ctx.lineTo(sx - L * 0.5 - 24, sy + 2); ctx.stroke();
+      const bw = 92, bh = 18, bx = sx - L * 0.5 - 24 - bw;
+      ctx.fillStyle = "#fff6d8";
+      ctx.beginPath(); ctx.moveTo(bx, sy - bh / 2 + 2 + Math.sin(t * 6) * 1.5);
+      ctx.lineTo(bx + bw, sy - bh / 2 + 2); ctx.lineTo(bx + bw, sy + bh / 2 + 2);
+      ctx.lineTo(bx, sy + bh / 2 + 2 + Math.sin(t * 6) * 1.5); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#c2263a"; ctx.font = "bold 11px Trebuchet MS, sans-serif"; ctx.textAlign = "center";
+      ctx.fillText("GO JUPI GO!", bx + bw / 2, sy + 6);
+      ctx.fillStyle = "#f2f4f8";                      // the plane
+      ctx.beginPath(); ctx.ellipse(sx, sy, L * 0.5, 5, 0, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = "#ff5d6c";
+      ctx.fillRect(sx - L * 0.12, sy - 2, L * 0.36, 3);   // wing
+      ctx.beginPath(); ctx.moveTo(sx - L * 0.5, sy); ctx.lineTo(sx - L * 0.42, sy - 11); ctx.lineTo(sx - L * 0.3, sy - 2); ctx.fill();
+      ctx.fillStyle = "#4cc9f0";
+      ctx.fillRect(sx + L * 0.18, sy - 4, 6, 3);          // cockpit window
+      ctx.fillStyle = "#3b404c";                          // spinning propeller
+      ctx.fillRect(sx + L * 0.5, sy - 7 * Math.abs(Math.sin(t * 40)), 2, 14 * Math.abs(Math.sin(t * 40)));
+    }
+    else if (o.kind === "balloon") {                  // a weather balloon going up to measure the air
+      const bx = sx + Math.sin(t * 0.7) * 8;
+      ctx.strokeStyle = "#d8dde6"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(bx, sy + 14); ctx.lineTo(bx, sy + 44); ctx.stroke();
+      ctx.fillStyle = "#ff5d6c";
+      ctx.fillRect(bx - 4, sy + 26, 8, 3);                // folded parachute
+      ctx.fillStyle = "#ff9a3f";
+      ctx.fillRect(bx - 4, sy + 44, 8, 7);                // the instrument box
+      ctx.fillStyle = "#f4f6fa";
+      ctx.beginPath(); ctx.ellipse(bx, sy, 13, 15, 0, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath(); ctx.ellipse(bx - 4, sy - 5, 3.5, 5, -0.4, 0, 6.2832); ctx.fill();
+    }
+  }
+}
+
+function drawMoon(a) {
+  const r = Math.max(14, Math.min(VW, VH) * 0.035), x = VW * 0.78, y = VH * 0.2;
+  ctx.globalAlpha = a;
+  const glow = ctx.createRadialGradient(x, y, r, x, y, r * 2);
+  glow.addColorStop(0, "rgba(240,236,220,0.18)"); glow.addColorStop(1, "rgba(240,236,220,0)");
+  ctx.fillStyle = glow;
+  ctx.beginPath(); ctx.arc(x, y, r * 2, 0, 6.2832); ctx.fill();
+  ctx.fillStyle = "#ebe7da";
+  ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
+  ctx.fillStyle = "#cfc9b8";                          // craters
+  for (const [cx, cy, cr] of [[-0.35, -0.2, 0.22], [0.3, 0.25, 0.16], [0.1, -0.45, 0.1], [-0.15, 0.45, 0.12]]) {
+    ctx.beginPath(); ctx.arc(x + cx * r, y + cy * r, cr * r, 0, 6.2832); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// water and steam rolling off the pad as the deluge system soaks it
+function deluge() {
+  const side = Math.random() < 0.5 ? -1 : 1;
+  puff(side * (1.2 + Math.random() * 1.4), 0.15, side * (3 + Math.random() * 6), 0.5 + Math.random() * 1.5,
+       1 + Math.random(), 0.25 + Math.random() * 0.35, Math.random() < 0.5 ? "#eef4f8" : "#cfe0ec",
+       { weight: -0.6, spread: 1.8, punch: 0.9, drag: 0.975 });
+}
+
 function render(r, f, t) {
   const alt = f ? f.y : 0;
   const z = zoomFor(alt, lengthNow(r, f));
@@ -1653,6 +1969,7 @@ function render(r, f, t) {
       ctx.beginPath(); ctx.arc(s.x * VW, sy, s.r, 0, 6.2832); ctx.fill();
     }
     ctx.globalAlpha = 1;
+    drawMoon(sa);
   }
 
   // ---- clouds ----
@@ -1669,6 +1986,9 @@ function render(r, f, t) {
     }
   }
   ctx.globalAlpha = 1;
+
+  // ---- birds, a plane, a weather balloon ----
+  drawSkyThings(alt, z, t);
 
   // ---- altitude markers ----
   const stepM = alt > 2500 ? 1000 : alt > 800 ? 500 : 100;
@@ -1687,8 +2007,10 @@ function render(r, f, t) {
   const gy = toScrY(0);
   if (gy < VH + 20) {
     // the Vehicle Assembly Building, miles away across the flats
-    const vabH = Math.min(VH * 0.12, VW * 0.14);
-    drawVAB(Math.max(VW * 0.03, VW * 0.3 - vabH * 1.93) - camX * z * 0.02, gy, vabH);
+    const vabH = Math.min(VH * 0.12, VW * 0.14), far = camX * z * 0.02;
+    drawSkyline(-far, gy, t);
+    drawVAB(Math.max(VW * 0.03, VW * 0.3 - vabH * 1.93) - far, gy, vabH);
+    drawCrawler(VW * 0.02 - far, gy);
 
     const gg = ctx.createLinearGradient(0, gy, 0, VH);
     gg.addColorStop(0, "#6d9a5d"); gg.addColorStop(0.35, "#4e8f43"); gg.addColorStop(1, "#2f5f2c");
@@ -1755,6 +2077,9 @@ function render(r, f, t) {
 
   // ---- the bits Jupi has thrown away ----
   drawJetsam(r, f, z, toScrX, toScrY);
+
+  // ---- the clock, the alligator and the crowd, nearest of all ----
+  if (gy < VH + 20) drawCrowdSide(toScrX(0), gy, t, f);
 
   // ---- Jupi ----
   const wrecked = f && (f.outcome === "crashed" || f.outcome === "brokeup");
@@ -1844,6 +2169,17 @@ const Sound = {
       o.start(); o.stop(this.ac.currentTime + 0.22);
     } catch (e) {}
   },
+  beep(high) {                                        // the countdown clock
+    if (!this.ac || !this.on) return;
+    try {
+      const o = this.ac.createOscillator(), g = this.ac.createGain();
+      o.type = "square"; o.frequency.setValueAtTime(high ? 1320 : 880, this.ac.currentTime);
+      g.gain.setValueAtTime(0.08, this.ac.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, this.ac.currentTime + 0.14);
+      o.connect(g); g.connect(this.ac.destination);
+      o.start(); o.stop(this.ac.currentTime + 0.15);
+    } catch (e) {}
+  },
 };
 
 /* --------------------------------------------------------------------------
@@ -1881,6 +2217,7 @@ function esc(s) {
    -------------------------------------------------------------------------- */
 const $ = id => document.getElementById(id);
 let sel = null, rocket = null, flight = null, mode = "build", sessionBest = 0, lastRealT = 0, ffStart = 0;
+let countEnd = null, countLen = 0, lastBeep = -1;                     // the countdown, in page seconds
 
 function fillSelect(el, list, chosen) {
   el.innerHTML = list.map(p => '<option' + (p.name === chosen ? " selected" : "") + '>' + esc(p.name) + '</option>').join("");
@@ -2005,16 +2342,26 @@ function row(k, v, c) {
    LAUNCH!
    -------------------------------------------------------------------------- */
 function launch() {
-  if (mode === "flying") return;
+  if (mode === "flying" || mode === "countdown") return;
   readPanel();
   Sound.wake();
-  Sound.startRumble();
-  flight = newFlight(rocket);
   bits = [];
-  mode = "flying";
-  ffStart = 0;
   $("result").classList.remove("on");
   $("launch").disabled = true; $("mLaunch").disabled = true;
+  const n = countdownLength();
+  if (n > 0) {
+    mode = "countdown"; flight = null;
+    countEnd = null; countLen = n; lastBeep = -1;
+    $("hAlt").textContent = "0"; $("hSpd").textContent = "0"; $("hTime").textContent = "0.0";
+  } else startFlight();
+}
+
+function startFlight() {
+  readPanel();
+  Sound.startRumble();
+  flight = newFlight(rocket);
+  mode = "flying";
+  ffStart = 0;
 }
 
 const STATUS = {
@@ -2129,7 +2476,17 @@ function frame(now) {
   lastRealT = now;
   const t = now / 1000;
 
+  if (mode === "countdown") {
+    if (countEnd == null) countEnd = t + countLen;
+    const left = countEnd - t;
+    const n = Math.ceil(left);
+    if (n !== lastBeep && n > 0) { Sound.beep(n <= 3); lastBeep = n; }
+    if (left < 1) deluge();
+    if (left <= 0) startFlight();
+  }
+
   if (mode === "flying" && flight) {
+    if (flight.t < 2.5 && flight.y < 25) deluge();
     const ts = timeScaleFor(flight);
     if (ts > 1 && !ffStart) ffStart = now;
     if (ts === 1) ffStart = 0;
@@ -2196,6 +2553,16 @@ function frame(now) {
       ctx.fillText(e.text, VW / 2, VH * 0.27);
       ctx.globalAlpha = 1;
     }
+  }
+
+  if (mode === "countdown") {
+    const n = clamp(Math.ceil(countEnd - t), 1, Math.ceil(countLen));
+    ctx.textAlign = "center";
+    ctx.font = "bold 46px Trebuchet MS, sans-serif";
+    ctx.fillStyle = "#00000088";
+    ctx.fillText("T-" + n, VW / 2 + 2, VH * 0.27 + 2);
+    ctx.fillStyle = "#ffc24a";
+    ctx.fillText("T-" + n, VW / 2, VH * 0.27);
   }
 
   if (mode === "flying" && ffStart) {
