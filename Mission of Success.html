@@ -587,8 +587,59 @@ const Q_LIMIT   = 60000;    // MAX-Q: the hardest squeeze Jupi can survive, in p
                             //   A normal Jupi peaks near 36 kPa. Real rockets sit at 30-40.
 const Q_EASE_ON  = 0.62;    // ease off once the squeeze passes this share of the limit
 const Q_EASE_OFF = 0.50;    // and push the throttle back up once it falls below this
+
+// --- THE SOUND BARRIER ---
+// Air gets out of a slow rocket's way. Near the speed of sound it cannot get out
+// of the way fast enough, so it piles up in front and drag climbs steeply. It is
+// worst just past Mach 1, then eases off once Jupi is properly supersonic. This
+// is a real wall, and punching through it costs fuel. Mach 1 is about 340 m/s at
+// the ground and SLOWER higher up, because the air up there is colder.
+const MACH_RISE  = 0.80;    // drag starts climbing at this fraction of the speed of sound
+const MACH_PEAK  = 1.05;    // and it is worst here, just past the barrier
+const MACH_MAXCD = 2.2;     // how many times its normal drag Jupi feels at that peak
+const MACH_SUPER = 1.3;     // what it settles back down to once well past the barrier
+
+// --- ENGINES GET STRONGER AS THE AIR THINS OUT ---
+// An engine pushes against the air outside as well as against its own exhaust.
+// High up there is almost no air pushing back, so the SAME engine gives more
+// shove. Real engines gain 10-15% between the launch pad and space.
+const VAC_GAIN = 0.14;      // how much extra push once the air is gone
+const RHO_SL   = 1.225;     // Earth's air at ground level, for comparing against
+
+// --- BENDING: being shoved sideways while going fast ---
+// A rocket usually does not break from speed alone. It breaks from being pushed
+// SIDEWAYS while going fast, which bends it like a drinking straw. Engineers call
+// this "q-alpha" - the squeeze multiplied by how sideways you are - and it is the
+// reason real launches get called off for high wind.
+// Measured, not guessed: a calm-day Jupi peaks near 95, and 12 m/s of wind near 700.
+const QA_LIMIT = 800;       // the most bending Jupi can take (pascals x radians)
+const QA_MIN_Q = 20000;     // ...but only once the air is actually squeezing this hard.
+                            //   Being sideways in gentle air bends nothing. A rocket
+                            //   flopping about just after lift-off is going too slowly to
+                            //   hurt itself - it TUMBLES instead, which is a different
+                            //   way to lose. Without this floor, every wobbly rocket
+                            //   snapped instantly and tumbling vanished from the game.
+                            //   Measured across all 432 stock builds: at 15 kPa four of
+                            //   them snapped on a calm day, which is not what this is for.
+                            //   Anything from 18 kPa up leaves those alone AND leaves
+                            //   wobbly rockets free to tumble, while wind still snaps
+                            //   Jupi from about 17 m/s. 20 sits in the middle of that.
 const WOBBLY    = 0.05;     // below this steadiness Jupi gets twitchy
 const TUMBLES   = -0.51;    // below this it cannot save itself (measured, not guessed)
+
+// How fast sound travels here. It drops as you climb, because the air is colder,
+// which means the barrier creeps DOWN to meet a climbing rocket.
+function soundSpeed(y) {
+  const T = y < 11000 ? 288.15 - 0.0065 * Math.max(y, 0) : 216.65;   // air cools ~6.5C per km, then steadies
+  return Math.sqrt(1.4 * 287 * T);
+}
+
+// How many times its normal drag Jupi feels at this fraction of the speed of sound.
+function machDrag(M) {
+  if (M < MACH_RISE) return 1;
+  if (M < MACH_PEAK) return 1 + (MACH_MAXCD - 1) * (M - MACH_RISE) / (MACH_PEAK - MACH_RISE);
+  return MACH_SUPER + (MACH_MAXCD - MACH_SUPER) * Math.exp(-(M - MACH_PEAK) * 1.6);
+}
 
 // Once the boosters drop away there is nothing left to keep Jupi straight, so
 // the autopilot takes over and steers - exactly like a real rocket gimballing
@@ -759,14 +810,14 @@ function atLiftoff(r) {
 /* Fly the whole boost phase in the background, without drawing anything, just
    to find out how hard the air will squeeze. That way the panel can warn you
    BEFORE you launch instead of surprising you halfway up. */
-function predictMaxQ(r) {
+function predictLoads(r) {
   const f = newFlight(r);
   let guard = 0;
   while (f.alive && guard++ < 120 * 90) {
     stepFlight(f);
     if (f.srbProp <= 0 && f.coreProp <= 0 && f.svcProp <= 0) break;
   }
-  return f.maxQ;
+  return { q: f.maxQ, qa: f.maxQA, mach: f.maxMach };
 }
 
 /* --------------------------------------------------------------------------
@@ -781,6 +832,7 @@ function newFlight(r) {
     onRail: true, lifted: false, chuteOut: false, tumbled: false,
     alive: true, outcome: null, landSpeed: 0, padTime: 0,
     shake: 0, aoa: 0, throttleNow: 0, srbFire: 0, coreFire: 0, svcFire: 0, maxQ: 0, qNow: 0,
+    qaNow: 0, maxQA: 0, mach: 0, maxMach: 0, vacBoost: 1,
     easing: false, easedFor: 0,
     events: [], jetsam: [],
   };
@@ -816,6 +868,8 @@ function stepFlight(f) {
   const r = f.r, W = JUPI.world;
   const mb = massBalance(r, f);
   const m = mb.m, c = mb.com;
+  const g   = W.gravity * (R_EARTH / (R_EARTH + f.y)) ** 2;
+  const rho = W.airThickness * Math.exp(-f.y / SCALE_H);
 
   // --- THE THROTTLE BUCKET ---
   // This is what real rockets do. The air squeezes hardest partway up, so the
@@ -847,8 +901,13 @@ function stepFlight(f) {
   }
   f.throttleNow = Math.max(f.srbFire, f.coreFire, f.svcFire);
 
-  const g   = W.gravity * (R_EARTH / (R_EARTH + f.y)) ** 2;
-  const rho = W.airThickness * Math.exp(-f.y / SCALE_H);
+  // Every engine pushes harder where the air is thin, because there is less air
+  // shoving back against the exhaust. On the pad this is worth nothing at all;
+  // out where there is no air left it is worth the full VAC_GAIN. Same engine,
+  // more push, just for being high up.
+  f.vacBoost = 1 + VAC_GAIN * Math.max(0, 1 - rho / RHO_SL);
+  T *= f.vacBoost;
+
   const ax  = Math.sin(f.th), ay = Math.cos(f.th);
 
   // --- still on the pad? Jupi only leaves when the engines out-push gravity ---
@@ -865,22 +924,38 @@ function stepFlight(f) {
   let fx = T * ax, fy = T * ay - m * g;
 
   // --- air. What matters is how Jupi moves THROUGH it, so wind counts. ---
-  const CdA = (f.srbOn ? r.CdA_full : f.coreOn ? r.CdA_core : f.svcOn ? r.CdA_svc : r.CdA_pod)
-            + (f.chuteOut ? CHUTE_CDA : 0);
   const wind = (f.y > 2) ? W.wind : 0;
   const rvx = f.vx - wind, rvy = f.vy, rv = Math.hypot(rvx, rvy);
+  // THE SOUND BARRIER. Drag is not a fixed number. As Jupi closes on the speed of
+  // sound the air stops getting out of the way and piles up in front instead, so
+  // the very same rocket suddenly has to shove much harder air aside.
+  f.mach = rv / soundSpeed(f.y);
+  if (f.mach > f.maxMach) f.maxMach = f.mach;
+  const CdA = (f.srbOn ? r.CdA_full : f.coreOn ? r.CdA_core : f.svcOn ? r.CdA_svc : r.CdA_pod)
+              * machDrag(f.mach)
+            + (f.chuteOut ? CHUTE_CDA : 0);
   // DYNAMIC PRESSURE - how hard the air is squeezing Jupi right now.
   // It peaks partway up: speed pushes it up, thinning air pulls it down.
   f.qNow = 0.5 * rho * rv * rv;
   if (f.qNow > f.maxQ) f.maxQ = f.qNow;
-  // torn apart by the air. Nothing exploded - the airframe simply could not
-  // take the squeeze, which is why real rockets ease off through this moment.
-  if (f.qNow > Q_LIMIT && f.lifted && !f.chuteOut) {
+  // BENDING. Squeeze on its own rarely breaks a real rocket. What breaks one is
+  // the squeeze multiplied by how SIDEWAYS it is flying, because that bends it
+  // like a drinking straw. Fly straight and you can take a lot; get shoved
+  // sideways by wind at the same speed and you snap.
+  f.qaNow = f.qNow * Math.abs(f.aoa);
+  // only count bending that could actually hurt, so the pre-launch warning and
+  // the real flight are judging Jupi by exactly the same rule
+  if (f.qNow > QA_MIN_Q && f.qaNow > f.maxQA) f.maxQA = f.qaNow;
+  // Nothing exploded - the airframe simply could not take it. This is why real
+  // rockets ease off through Max-Q, and why they do not launch into a gale.
+  const bendable = f.qNow > QA_MIN_Q && f.qaNow > QA_LIMIT;
+  if (f.lifted && !f.chuteOut && (f.qNow > Q_LIMIT || bendable)) {
+    const bent = f.qNow <= Q_LIMIT;
     if (f.srbOn) { f.srbOn = false; jettison(f, "srb"); }
     if (f.coreOn) { f.coreOn = false; jettison(f, "core"); }
     if (f.svcOn) { f.svcOn = false; jettison(f, "svc"); }
-    say(f, "TORN APART BY THE AIR!");
-    f.alive = false; f.outcome = "brokeup"; f.landSpeed = rv;
+    say(f, bent ? "BENT SIDEWAYS UNTIL IT SNAPPED!" : "TORN APART BY THE AIR!");
+    f.alive = false; f.outcome = bent ? "snapped" : "brokeup"; f.landSpeed = rv;
     return;
   }
   if (rv > 0.01 && rho > 0) {
@@ -1067,9 +1142,11 @@ function statusOf(f) {
   if (f.outcome === "landed")   return "landed";
   if (f.outcome === "crashed")  return "crashed";
   if (f.outcome === "brokeup")  return "brokeup";
+  if (f.outcome === "snapped")  return "snapped";
   if (f.outcome === "tooheavy") return "stuck";
   if (f.tumbled)                return "tumble";
   if (f.chuteOut)               return "chute";
+  if (f.alive && f.lifted && f.qaNow > QA_LIMIT * 0.78) return "bending";
   if (f.alive && f.lifted && f.qNow > Q_LIMIT * 0.78) return "maxq";
   if (f.alive && f.easing) return "easing";
   if (!f.lifted)                return f.padTime > 0.2 ? "stuck" : "pad";
@@ -1784,7 +1861,8 @@ function refresh() {
   const tS = rocket.srb.rate  > 0 ? rocket.srb.prop  / rocket.srb.rate  : 0;
   const tC = rocket.core.rate > 0 ? rocket.core.prop / rocket.core.rate : 0;
   const tU = rocket.svc.rate  > 0 ? rocket.svc.prop  / rocket.svc.rate  : 0;
-  const qPeak = predictMaxQ(rocket);
+  const loads = predictLoads(rocket);
+  const qPeak = loads.q, qaPeak = loads.qa;
 
   $("vFuel").textContent    = Math.round(rocket.core.prop) + " kg";
   $("vCapFuel").textContent = Math.round(rocket.svc.prop) + " kg";
@@ -1800,16 +1878,28 @@ function refresh() {
     row("Steadiness", steadyWord(marg) + " (" + marg.toFixed(2) + " m)",
         marg > WOBBLY ? "good" : marg > TUMBLES ? "warn" : "bad") +
     row("Air stress", stressWord(qPeak) + " (" + Math.round(qPeak / 1000) + " kPa)",
-        qPeak < Q_LIMIT * 0.8 ? "good" : qPeak < Q_LIMIT ? "warn" : "bad");
+        qPeak < Q_LIMIT * 0.8 ? "good" : qPeak < Q_LIMIT ? "warn" : "bad") +
+    row("Sideways bending", bendWord(qaPeak) + " (" + Math.round(qaPeak) + ")",
+        qaPeak < QA_LIMIT * 0.8 ? "good" : qaPeak < QA_LIMIT ? "warn" : "bad") +
+    row("Top speed", machWord(loads.mach) + " (Mach " + loads.mach.toFixed(2) + ")",
+        loads.mach >= 1 ? "good" : "");
 
   const allDry = rocket.srb.dry + rocket.core.dry + rocket.svc.dry + rocket.pod.dry;
   const dryTwr = push / (allDry * g);
   let msg, tone = "var(--go)";
   if (dryTwr < 1)          { msg = "<b>WAY too heavy!</b> Even with every tank empty this could not lift off."; tone = "var(--bad)"; }
   else if (twr < 1)        { msg = "<b>TOO HEAVY to lift off!</b> Jupi will sit there burning fuel until it is light enough to move. Use less fuel, or bigger boosters."; tone = "var(--bad)"; }
+  else if (qaPeak >= QA_LIMIT) {
+    // Same failure, two different causes - so give the advice that actually helps.
+    msg = marg < TUMBLES
+      ? "<b>Jupi will snap in half!</b> The boosters are too small to hold it straight, so it slews sideways at speed and bends until it breaks. <b>Make them bigger.</b>"
+      : "<b>The wind will snap Jupi in half!</b> It gets shoved sideways while going fast, and a rocket bends like a straw. Try calmer <b>wind</b> in the catalogue, or <b>smaller boosters</b> &mdash; big ones turn to face the wind and catch it harder.";
+    tone = "var(--bad)";
+  }
   else if (marg < TUMBLES) { msg = "<b>Boosters too small!</b> Jupi will tumble like a thrown stick. Make them bigger."; tone = "var(--bad)"; }
   else if (qPeak >= Q_LIMIT) { msg = "<b>Too fast, too low!</b> The air will tear Jupi apart. Try <b>easing off at Max-Q</b> &mdash; that is exactly what real rockets do &mdash; or carry less core fuel."; tone = "var(--bad)"; }
   else if (qPeak >= Q_LIMIT * 0.8) { msg = "Jupi is pushing hard through the thick air. A little more and it would break up."; tone = "var(--hot2)"; }
+  else if (qaPeak >= QA_LIMIT * 0.8) { msg = "The wind is bending Jupi as it climbs. A little more and it would snap."; tone = "var(--hot2)"; }
   else if (twr < 1.4)      { msg = "Jupi will crawl off the pad &mdash; and a slow rocket gets shoved sideways by the wind."; tone = "var(--hot2)"; }
   else if (marg < WOBBLY)  { msg = "Boosters are on the small side. Jupi will wobble before it settles."; tone = "var(--hot2)"; }
   else if (rocket.svc.prop <= 0) { msg = "<b>Stage 3 has no fuel.</b> The service module is just dead weight &mdash; give it some and watch how much higher Jupi goes!"; tone = "var(--hot2)"; }
@@ -1823,8 +1913,16 @@ function refresh() {
 function stressWord(q) {
   return q >= Q_LIMIT ? "WILL BREAK UP" : q >= Q_LIMIT * 0.8 ? "very high" : "fine";
 }
+// Being shoved sideways while going fast is what actually snaps a rocket.
+function bendWord(qa) {
+  return qa >= QA_LIMIT ? "WILL SNAP" : qa >= QA_LIMIT * 0.8 ? "very high" : "fine";
+}
+// How close Jupi gets to the speed of sound, where the air stops making way.
+function machWord(M) {
+  return M >= 1 ? "SUPERSONIC" : M >= MACH_RISE ? "fighting the barrier" : "below the barrier";
+}
 function steadyWord(m) {
-  return m > WOBBLY ? "rock steady" : m > TUMBLES ? "wobbly" : "WILL TUMBLE";
+  return m > WOBBLY ? "rock steady" : m > TUMBLES ? "wobbly" : "OUT OF CONTROL";
 }
 function row(k, v, c) {
   return '<div class="row"><span>' + k + '</span><b' + (c ? ' class="' + c + '"' : '') + '>' + v + "</b></div>";
@@ -1856,6 +1954,8 @@ const STATUS = {
   maxq:    ["AIR STRESS HIGH!",      "#ff5d6c"],
   easing:  ["EASING OFF - MAX-Q",    "#ffc24a"],
   brokeup: ["TORN APART",            "#ff5d6c"],
+  snapped: ["SNAPPED IN THE WIND",   "#ff5d6c"],
+  bending: ["BENDING IN THE WIND!",  "#ff5d6c"],
   thrust:  ["ENGINE BURNING",        "#ff9a3f"],
   coast:   ["COASTING UP",           "#eef3ff"],
   falling: ["FALLING",               "#ffc24a"],
@@ -1906,6 +2006,7 @@ function finish() {
     crashed:  "SMASH! Jupi hit the ground at " + Math.round(f.landSpeed) + " m/s.",
     tumbled:  "Jupi tumbled! It went sideways and never came back.",
     brokeup:  "TORN APART! The air ripped Jupi to pieces at " + Math.round(f.maxQ / 1000) + " kPa.",
+    snapped:  "SNAPPED! The wind shoved Jupi sideways at " + Math.round(f.maxV) + " m/s and bent it until it broke.",
     tooheavy: "Jupi was too heavy and never left the pad.",
   }[f.outcome] || "Jupi came back down.";
 
@@ -1915,6 +2016,9 @@ function finish() {
     : {
     tumbled:  "Bigger boosters would hold it straight.",
     brokeup:  "Too fast while the air was still thick. Less core fuel, or a thriftier engine.",
+    snapped:  stability(rocket, atLiftoff(rocket)) < TUMBLES
+                ? "BIGGER boosters. Jupi could not hold itself straight, and going sideways at speed is what broke it."
+                : "Less wind &mdash; or SMALLER boosters. Big ones turn into the wind and catch it harder.",
     tooheavy: "Try less fuel, or bigger boosters.",
     crashed:  sel.parachute ? "The chute only works if Jupi is still pointing the right way." : "Switch the parachute on for a soft landing.",
     landed:   "Now try to beat it. Which stage would you give more fuel?",

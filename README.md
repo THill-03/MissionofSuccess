@@ -36,6 +36,19 @@ That is the point of the whole thing. Nothing is faked to feel good:
   booster and Jupi tumbles like a thrown stick — and the panel tells you *before* you launch, using
   thresholds that were measured by flying it, not guessed.
 - **Wind** pushes slow rockets around far more than fast ones.
+- **The sound barrier.** Air gets out of a slow rocket's way. Near the speed of sound it cannot get
+  out of the way fast enough, so it piles up in front and drag climbs steeply — worst just past
+  Mach 1, then easing off again. Mach 1 is about 340 m/s at the ground and *slower* higher up,
+  because the air up there is colder, so the barrier creeps down to meet a climbing rocket. A
+  default Jupi tops out around Mach 0.88, right up against the wall without ever getting through it.
+- **Bending.** Speed alone rarely breaks a real rocket. What breaks one is the squeeze multiplied by
+  how *sideways* it is flying, which bends it like a drinking straw — engineers call it *q-alpha*,
+  and it is why real launches get called off for high wind. Jupi snaps the same way. The
+  counter-intuitive part is real and worth finding: **big boosters make this worse**, because a very
+  stable rocket turns to face the wind and so catches it harder. Crank the wind past about 16 m/s
+  and the big-booster rocket snaps while the twitchy one rides it out.
+- **Engines get stronger as the air thins**, because there is less air pushing back against the
+  exhaust. Real engines gain 10–15% between the pad and space; Jupi gains up to 14%.
 - **Max-Q.** Dynamic pressure - the squeeze the air puts on the rocket - peaks partway up,
   because speed drives it up while the thinning air drags it down. Push too fast while the air
   is still thick and Jupi is torn apart. A normal flight peaks near 36 kPa, which is about where
@@ -49,10 +62,21 @@ That is the point of the whole thing. Nothing is faked to feel good:
   driven by the same air-density value the drag model uses.
 - **Solid boosters cannot be throttled.** Once they are lit, they are lit.
 
+Three ways to lose, and the panel predicts all three before you launch by flying the climb in the
+background: **tumbling** (not enough booster to stay pointed), **torn apart** (too fast while the air
+is still thick), and **snapped** (shoved sideways while going fast). Every one of those thresholds
+was set by flying the rocket across the whole range of settings and checking the warning against
+what actually happened — not guessed.
+
 Because it is honest, the interesting lessons are *discoverable* rather than written down.
 Every tank has a sweet spot: pour in more fuel and Jupi climbs higher, right up until the
 rocket is too heavy to get off the pad properly, and then it falls off a cliff. The default
 rocket reaches about 8.5 km. Around 30 km is reachable if you work out how.
+
+The engines are deliberately *less* efficient than real hardware — about a fifth to a third of the
+exhaust speed of the real thing. That is the one number that is scaled rather than honest, and it is
+load-bearing: it keeps flights short enough to watch and keeps Jupi at amateur-rocket altitudes
+rather than orbit. Everything built on top of it is the real physics.
 
 Every launch is deterministic: the same rocket always flies exactly the same way, so every
 change you make is a fair test.
